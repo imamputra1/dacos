@@ -4,16 +4,11 @@ dacos.protocols - Type hints, protocols, and interfaces for the entire library.
 This module serves as the central "dictionary" for all data types and contracts.
 It enables IDE autocompletion, prevents circular imports, and defines the
 shape of data flowing through the system.
-
-RULES:
-1. NO execution logic (no calculations, I/O, or data manipulation).
-2. NO heavy imports outside TYPE_CHECKING.
-3. All type aliases and protocols must be defined here.
-4. Use `from __future__ import annotations` for lazy evaluation.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -26,7 +21,7 @@ if TYPE_CHECKING:
     type LazyFrame = pl.LazyFrame
     type DataFrame = pl.DataFrame
 else:
-    # Runtime placeholders (mencegah NameError saat digunakan dalam anotasi)
+    # Runtime placeholders
     LazyFrame = Any
     DataFrame = Any
 
@@ -50,15 +45,19 @@ type Price = float
 type Volume = float
 """Trading volume."""
 
+type PathLike = str | os.PathLike
+"""Path-like object (string or os.PathLike)."""
+
+
 # ====================================================================
 # FUNCTION SIGNATURE ALIASES
 # ====================================================================
 
 type TransformFunc = Callable[[LazyFrame], LazyFrame]
-"""Fungsi yang menerima LazyFrame dan mengembalikan LazyFrame."""
+"""Function that takes a LazyFrame and returns a transformed LazyFrame."""
 
 type SignalFunc = Callable[[LazyFrame], LazyFrame]
-"""Fungsi yang menambahkan kolom sinyal (biasanya 'signal') ke LazyFrame."""
+"""Function that adds a signal column (usually 'signal') to the LazyFrame."""
 
 
 # ====================================================================
@@ -67,25 +66,19 @@ type SignalFunc = Callable[[LazyFrame], LazyFrame]
 
 @runtime_checkable
 class DataTransformer(Protocol):
-    """
-    Kontrak untuk komponen yang melakukan transformasi data.
-    Siapa pun yang mengimplementasikan protocol ini WAJIB memiliki
-    method `transform` dengan signature berikut.
-    """
+    """Contract for components that perform data transformations."""
 
     def transform(self, data: LazyFrame) -> LazyFrame:
         """
-        Terima LazyFrame, kembalikan LazyFrame yang telah ditransformasi.
-        Transformasi bisa berupa filtering, penambahan kolom, agregasi, dll.
+        Transform a LazyFrame and return a new LazyFrame.
+        Transformations can include filtering, column additions, aggregations, etc.
         """
         ...
 
 
 @runtime_checkable
 class IngestionProtocol(Protocol):
-    """
-    Kontrak untuk pembaca data dari sumber (raw lake atau silver lake).
-    """
+    """Contract for data readers from raw or silver lake."""
 
     def read(
         self,
@@ -96,8 +89,8 @@ class IngestionProtocol(Protocol):
         end_time: Timestamp | None = None,
     ) -> LazyFrame:
         """
-        Baca data untuk daftar simbol dan interval tertentu.
-        Mengembalikan LazyFrame dengan kolom standar: timestamp, symbol,
+        Read data for given symbols and interval.
+        Returns a LazyFrame with standard columns: timestamp, symbol,
         open, high, low, close, volume.
         """
         ...
@@ -105,9 +98,7 @@ class IngestionProtocol(Protocol):
 
 @runtime_checkable
 class AlignmentProtocol(Protocol):
-    """
-    Kontrak untuk penyelarasan timestamp multi-asset (as-of join).
-    """
+    """Contract for multi-asset timestamp alignment (as-of join)."""
 
     def align(
         self,
@@ -118,21 +109,40 @@ class AlignmentProtocol(Protocol):
         how: str = "forward",
     ) -> LazyFrame:
         """
-        Lakukan as-of join untuk menyelaraskan data beberapa simbol
-        ke grid waktu yang sama.
+        Perform as-of join to align multiple symbols to the same time grid.
         """
         ...
 
 
 @runtime_checkable
 class StatisticalTestProtocol(Protocol):
-    """
-    Kontrak untuk uji statistik (Hurst, ADF, dll).
-    """
+    """Contract for statistical tests (Hurst, ADF, etc.)."""
 
     def compute(self, series: LazyFrame, column: str) -> dict[str, float]:
         """
-        Hitung statistik dari satu kolom numerik.
-        Mengembalikan dictionary berisi hasil uji (misal: {'hurst': 0.35}).
+        Compute statistics from a single numeric column.
+        Returns a dictionary of results (e.g., {'hurst': 0.35}).
         """
         ...
+
+
+# ====================================================================
+# EXPORTS
+# ====================================================================
+
+__all__ = [
+    "Symbol",
+    "Interval",
+    "Timestamp",
+    "Price",
+    "Volume",
+    "PathLike",
+    "LazyFrame",
+    "DataFrame",
+    "TransformFunc",
+    "SignalFunc",
+    "DataTransformer",
+    "IngestionProtocol",
+    "AlignmentProtocol",
+    "StatisticalTestProtocol",
+]
