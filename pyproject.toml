@@ -62,3 +62,6 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+markers = [
+    "stress: Mark a test as a stress test (handles large datasets)"
+]

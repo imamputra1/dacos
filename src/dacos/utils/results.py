@@ -1,6 +1,4 @@
 """
-results.py - Rust-style Monadic Result Pattern with full Algebraic Data Types
-
 Industrial-grade error handling for dacos trading system.
 Implements Ok and Err monads with comprehensive operations.
 All type hints use Python 3.12+ syntax (| instead of Union, Optional).

@@ -13,7 +13,6 @@ Arsitektur:
 """
 
 __version__ = "0.1.1"
-
 from dacos import (
     builder,
     config,
@@ -42,6 +41,7 @@ from dacos.paradigms import (
     create_stat_arb_engine,
 )
 from dacos.protocols import DataFrame
+from dacos.research import run_pairs_research
 from dacos.utils import (
     Err,
     NoneType,
@@ -57,6 +57,7 @@ from dacos.utils import (
 
 __all__ = [
     "__version__",
+    "run_pairs_research",
     "builder",
     "config",
     "core",

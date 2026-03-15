@@ -1,6 +1,4 @@
 """
-laws/mean_reversion.py
-
 Stastical test for mean reversion: Hurst Exponent, ADF P-Value, and half-life.
 All functions are decoreted with @safe to Result[float, Exceptions].
 """

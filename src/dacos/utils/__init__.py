@@ -1,7 +1,3 @@
-"""
-dacos.utils - Utility modules for dacos library.
-"""
-
 from dacos.utils.results import (
     Err,
     MonadMetrics,

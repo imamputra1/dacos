@@ -1,6 +1,4 @@
 """
-core/alignment.py
-
 UniverseAligner: Master clock for time series alignment using Polars upsample.
 Transforms irregularly spaced data into a regular frequency grid with forward fill.
 Ensures all symbols are aligned to the same global time grid.

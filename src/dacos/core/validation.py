@@ -1,6 +1,4 @@
 """
-core/validation.py
-
 UniverseValidator: Quality control for aligned data.
 Ensures sufficient length, no excessive nulls, and no stagnant coins.
 """

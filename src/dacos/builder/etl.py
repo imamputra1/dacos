@@ -1,6 +1,4 @@
 """
-builder/etl.py
-
 Industrial-grade ETL pipeline for building skinny tables from raw Parquet data.
 Uses Polars lazy evaluation to avoid loading data into RAM.
 Implements Result monad for explicit error handling.

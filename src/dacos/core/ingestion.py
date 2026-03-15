@@ -1,6 +1,4 @@
 """
-core/ingestion.py
-
 Module for loading specific symbols from the silver lake into memory.
 Uses Polars lazy evaluation to filter before collecting, ensuring memory safety.
 """
@@ -52,18 +50,10 @@ class UniverseIngestor:
             Err(exception) if any error occurs.
         """
         try:
-            # Build pattern to read all Parquet files recursively
             pattern = str(self.silver_path / "**" / "*.parquet")
-
-            # Lazy scan
             lazy_df: pl.LazyFrame = pl.scan_parquet(pattern)
-
-            # Apply predicate pushdown: filter by symbols
             filtered = lazy_df.filter(pl.col("symbol").is_in(symbols))
-
-            # Collect into memory (this is the only allowed .collect())
             df = filtered.collect()
-
             logger.info(f"Loaded {len(df)} rows for symbols {symbols}")
             return Ok(df)
 

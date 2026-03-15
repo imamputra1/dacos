@@ -1,6 +1,4 @@
 """
-paradigms/stat_arb/engines.py
-
 StatArbEngine: Computes hedge ratio, spread, and rolling z-score for pairs trading.
 """
 
