@@ -32,6 +32,11 @@ from dacos.core import (
     create_universe_ingestor,
     create_universe_validator,
 )
+from dacos.laws import (
+    calculate_adf_pvalue,
+    calculate_halflife,
+    calculate_hurst,
+)
 from dacos.protocols import DataFrame
 from dacos.utils import (
     Err,
@@ -62,6 +67,9 @@ __all__ = [
     "create_universe_aligner",
     "UniverseValidator",
     "create_universe_validator",
+    "calculate_hurst",
+    "calculate_adf_pvalue",
+    "calculate_halflife",
     "SkinnyLakeBuilder",
     "create_skinny_builder",
     "Result",
