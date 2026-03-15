@@ -1,6 +1,6 @@
 # dacos
 
-> A humble Python library for Medium-Frequency Trading alpha research.  
+> A Python library for Medium-Frequency Trading alpha research.  
 > Very early stage, experimental, and definitely not production-ready.  
 > Use at your own risk, and please be kind – we're learning here.
 
@@ -25,3 +25,45 @@ pip install dacos
 
 # Or directly from GitHub
 pip install git+https://github.com/yourusername/dacos.git
+```
+
+## Status
+This is a learning project. I'm not a quant, not a data engineer, just someone who enjoys messing around with data and trading ideas. The code works (fo me), but it's full of imperfections, rough edges, and probably a few bugs.
+
+If you're an experienced developer and spot something horrible, feel free to open an issue or PR – but please be gentle.
+
+## Roadmap 
+- ETL pipeline (extract, filter, log transform)
+- Result monad for error handling
+- Data alignment (as-of join for multiple symbols)
+- Statistical tests (Hurst, ADF, half-life)
+- Pairs trading engine
+- Momentum signals
+- Backtesting framework (maybe)
+
+## Contributing
+Contributions are welcome! But please keep in mind:
+
+    I'm still learning, so my code style might be weird.
+    Write tests if you add Features.
+    Be nice.
+
+License
+MIT – do whatever you want, but don't blame me if you lose money trading.
+
+## How to Use
+```python
+from dacos.builder import create_skinny_builder
+
+# Point to your raw Parquet folder and where you want the skinny table
+builder = create_skinny_builder("data/raw", "data/silver")
+
+# Run the pipeline – it returns a Result object
+result = builder.execute_pipeline()
+
+if result.is_ok():
+    print("Success! Skinny table created.")
+else:
+    print(f"Oh no: {result.error()}")
+```
+
