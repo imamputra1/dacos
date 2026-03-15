@@ -1,7 +1,7 @@
 [project]
 name = "dacos"
 version = "0.1.1"
-description = "Universal Python library for MFT alpha research & testing"
+description = "Deterministic Data Orchestrator for Quantitative Trading"
 authors = [{ name = "Imam Putra", email = "a.i.syahputra415@gmail.com" }]
 license = { text = "MIT" }
 readme = "README.md"
