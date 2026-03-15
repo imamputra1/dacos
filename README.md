@@ -4,11 +4,11 @@
 > Very early stage, experimental, and definitely not production-ready.  
 > Use at your own risk, and please be kind – we're learning here.
 
-dacos (pronounced "dah-kos") is a personal project born out of curiosity about statistical arbitrage, mean-reversion, and momentum strategies in crypto markets. It aims to provide a simple, modular, and safe toolkit for building and testing alpha signals without blowing up your laptop.
+dacos (pronounced "dalam-kost") is a personal project born out of curiosity about statistical arbitrage, mean-reversion, and momentum strategies in crypto markets. It aims to provide a simple, modular, and safe toolkit for building and testing alpha signals without blowing up your laptop.
 
 ## Why "dacos"?
 
-It stands for **Da**ta **Co**nstruction **S**ystem, but honestly, it sounded cool and was available on PyPI (at the time of writing). 🤷
+It stands for **Da**ta **Co**nstruction **S**ystem, but honestly, and it’s available on PyPI—coming soon (as of this writing). 
 
 ## Features (so far)
 
