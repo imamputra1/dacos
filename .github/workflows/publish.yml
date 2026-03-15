@@ -3,15 +3,12 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'v*'  # Memicu publish saat tag seperti v0.1.1 didorong
+      - 'v*'
 
 jobs:
   build-and-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    environment: pypi  # Sesuai dengan environment name di form
-    permissions:
-      id-token: write  # Wajib untuk trusted publishing
 
     steps:
       - uses: actions/checkout@v4
@@ -25,4 +22,6 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        run: uv publish --trusted-publishing always
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
