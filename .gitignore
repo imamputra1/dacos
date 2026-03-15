@@ -1,0 +1,23 @@
+# Environments
+.venv/
+env/
+venv/
+
+# Cache & Compiled files
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Build artifacts (JANGAN UPLOAD FOLDER INI KE GIT)
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
