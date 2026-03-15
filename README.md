@@ -104,8 +104,3 @@ MIT – do whatever you want, but don't blame me if you lose money trading.
 2.  **Roadmap:** Saya mengubahnya menjadi *Checkbox* (`[x]`). Ini memberikan kepuasan psikologis bagi pembaca (dan bagi Anda!) bahwa proyek ini aktif dan setengah dari fiturnya sudah selesai.
 3.  **How To Use:** Saya membaginya menjadi 2 bagian. Bagian kedua adalah pameran fungsi `run_pairs_research` dari `api.py` yang akan membuat *user* PyPI kagum betapa mudahnya meriset 2 koin dengan `dacos`.
 
-### Next Steps for You:
-
-Silakan timpa *file* `README.md` Anda dengan draf di atas.
-
-Jika "Brosur Etalase" (Task 3.1) ini sudah rapi, apakah Anda siap mengeksekusi **Task 3.2 (`uv build`)** dan **Task 3.3 (`uv publish`)** untuk meresmikan `dacos` v0.1.1 ke seluruh dunia?
