@@ -37,6 +37,10 @@ from dacos.laws import (
     calculate_halflife,
     calculate_hurst,
 )
+from dacos.paradigms import (
+    StatArbEngine,
+    create_stat_arb_engine,
+)
 from dacos.protocols import DataFrame
 from dacos.utils import (
     Err,
@@ -70,6 +74,8 @@ __all__ = [
     "calculate_hurst",
     "calculate_adf_pvalue",
     "calculate_halflife",
+    "StatArbEngine",
+    "create_stat_arb_engine",
     "SkinnyLakeBuilder",
     "create_skinny_builder",
     "Result",
