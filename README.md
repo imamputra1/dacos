@@ -95,12 +95,6 @@ Contributions are welcome! But please keep in mind:
     Write tests if you add Features.
     Be nice.
 
-License
-MIT – do whatever you want, but don't blame me if you lose money trading.
+LICENSE
 ---
-
-### PERUBAHAN UTAMA:
-1.  **Daftar Fitur:** Saya menambahkan *Time Alignment* dan *StatArb Engine*. Ini adalah "nilai jual" terbesar *library* Anda saat ini.
-2.  **Roadmap:** Saya mengubahnya menjadi *Checkbox* (`[x]`). Ini memberikan kepuasan psikologis bagi pembaca (dan bagi Anda!) bahwa proyek ini aktif dan setengah dari fiturnya sudah selesai.
-3.  **How To Use:** Saya membaginya menjadi 2 bagian. Bagian kedua adalah pameran fungsi `run_pairs_research` dari `api.py` yang akan membuat *user* PyPI kagum betapa mudahnya meriset 2 koin dengan `dacos`.
-
+MIT – do whatever you want, but don't blame me if you lose money trading.
