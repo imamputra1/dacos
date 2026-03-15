@@ -1,8 +1,7 @@
 import polars as pl
 import pytest
 
-from dacos.core import UniverseIngestor, create_universe_ingestor
-from dacos.utils import is_err, is_ok
+from dacos import UniverseIngestor, create_universe_ingestor, is_err, is_ok
 
 
 @pytest.fixture

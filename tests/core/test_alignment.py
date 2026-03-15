@@ -7,8 +7,7 @@ Tests cover factory, alignment correctness, forward-fill physics, and error hand
 
 import polars as pl
 
-from dacos.core.alignment import UniverseAligner, create_universe_aligner
-from dacos.utils import is_err, is_ok
+from dacos import UniverseAligner, create_universe_aligner, is_err, is_ok
 
 # ============================================================================
 # Test 1: Factory and Initialization
