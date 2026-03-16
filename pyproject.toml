@@ -12,6 +12,7 @@ dependencies = [
     "statsmodels>=0.14.0",
     "pyarrow>=14.0.0",
     "scipy>=1.11.0",
+    "numba>=0.64.0",
 ]
 
 [project.optional-dependencies]

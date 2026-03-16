@@ -1,8 +1,3 @@
-"""
-Module for loading specific symbols from the silver lake into memory.
-Uses Polars lazy evaluation to filter before collecting, ensuring memory safety.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -11,98 +6,105 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from dacos.contracts import SILVER_SCHEMA
+from dacos.protocols import PathLike, Symbol, Timestamp
 from dacos.utils import Err, Ok, Result
 
 if TYPE_CHECKING:
-    from dacos.protocols import PathLike
+    from dacos.protocols import LazyFrame
 
 logger = logging.getLogger(__name__)
 
 
-class UniverseIngestor:
+def validate_silver_schema(file_path: Path) -> Result[bool, TypeError]:
     """
-    Ingests data from silver lake (skinny table) for a given set of symbols.
-    """
-
-    def __init__(self, silver_path: PathLike) -> None:
-        """
-        Initialize the ingestor with the path to the silver lake.
-
-        Args:
-            silver_path: Path to the directory containing skinny Parquet files.
-        """
-        self.silver_path = Path(silver_path)
-
-    def load_universe(self, symbols: list[str]) -> Result[pl.DataFrame, Exception]:
-        """
-        Load data for specified symbols into memory as a Polars DataFrame.
-
-        This method performs a lazy scan, filters by the given symbols,
-        and finally collects the result into a DataFrame. If the silver path
-        contains multiple Parquet files (e.g., partitioned), it will read all.
-
-        Args:
-            symbols: List of symbol strings to load (e.g., ["BTCUSDT", "ETHUSDT"]).
-
-        Returns:
-            Ok(DataFrame) with columns: timestamp, symbol, log_price, log_volume
-            (depending on the schema of the skinny table).
-            Err(exception) if any error occurs.
-        """
-        try:
-            if not self.silver_path.exists():
-                return Err(FileNotFoundError(f"Silver path does not exist: {self.silver_path}"))
-
-            # Skema lengkap skinny table untuk memastikan tipe konsisten
-            # Timestamp dipaksa sebagai Datetime("ms") agar kompatibel dengan alignment
-            skinny_schema = {
-                "timestamp": pl.Datetime("ms"),
-                "symbol": pl.Utf8,
-                "log_price": pl.Float64,
-                "log_volume": pl.Float64,
-            }
-
-            # Tentukan sumber data berdasarkan jenis path
-            if self.silver_path.is_dir():
-                # Direktori: scan semua file Parquet secara rekursif dengan dukungan Hive partitioning
-                lazy_df: pl.LazyFrame = pl.scan_parquet(
-                    str(self.silver_path / "**" / "*.parquet"),
-                    hive_partitioning=True,
-                    schema=skinny_schema,  # Gunakan skema lengkap
-                )
-            elif self.silver_path.is_file() and self.silver_path.suffix.lower() == ".parquet":
-                # File tunggal .parquet
-                lazy_df = pl.scan_parquet(
-                    self.silver_path,
-                    schema=skinny_schema,
-                )
-            else:
-                return Err(ValueError(
-                    f"Silver path must be a directory or a .parquet file, got: {self.silver_path}"
-                ))
-
-            # Filter berdasarkan simbol
-            filtered = lazy_df.filter(pl.col("symbol").is_in(symbols))
-
-            # Kumpulkan ke DataFrame
-            df = filtered.collect()
-
-            logger.info(f"Loaded {len(df)} rows for symbols {symbols}")
-            return Ok(df)
-
-        except Exception as e:
-            logger.error(f"Failed to load universe: {e}", exc_info=True)
-            return Err(e)
-
-
-def create_universe_ingestor(silver_path: PathLike) -> UniverseIngestor:
-    """
-    Factory function to create a UniverseIngestor instance.
+    Validates the schema of a Parquet file against the strictly defined SILVER_SCHEMA.
+    Blocks execution if the file schema does not exactly match.
 
     Args:
-        silver_path: Path to the silver lake directory.
+        file_path: Resolved path to the Silver Lake parquet file.
 
     Returns:
-        Configured UniverseIngestor.
+        Ok(True) if schema matches exactly, Err(TypeError) with mismatch details otherwise.
     """
-    return UniverseIngestor(silver_path)
+    try:
+        actual_schema = pl.read_parquet_schema(file_path)
+    except Exception as exception:
+        return Err(TypeError(f"Failed to read Parquet schema from {file_path}: {exception}"))
+
+    for column_name, expected_dtype in SILVER_SCHEMA.items():
+        if column_name not in actual_schema:
+            return Err(TypeError(f"Schema violation: Missing required column '{column_name}'."))
+
+        actual_dtype = actual_schema[column_name]
+        if actual_dtype != expected_dtype:
+            return Err(
+                TypeError(
+                    f"Schema violation for '{column_name}': "
+                    f"Expected {expected_dtype}, got {actual_dtype}."
+                )
+            )
+
+    return Ok(True)
+
+
+def ingest_silver_data(
+    source_path: PathLike,
+    symbols: list[Symbol],
+    *,
+    start_time: Timestamp | None = None,
+    end_time: Timestamp | None = None,
+) -> Result[LazyFrame, Exception]:
+    """
+    Lazily ingests Silver Lake data with strict schema validation and predicate pushdown.
+
+    Args:
+        source_path: Path to the Silver Lake Parquet file.
+        symbols: List of ticker symbols to filter.
+        start_time: Optional start timestamp in Unix milliseconds.
+        end_time: Optional end timestamp in Unix milliseconds.
+
+    Returns:
+        Ok(LazyFrame) with applied filters, or Err(Exception) on failure or schema violation.
+    """
+    resolved_path = Path(source_path).resolve()
+
+    if not resolved_path.exists():
+        return Err(FileNotFoundError(f"Silver data file not found: {resolved_path}"))
+
+    if not resolved_path.is_file():
+        return Err(FileNotFoundError(f"Target path is not a file: {resolved_path}"))
+
+    schema_validation_result = validate_silver_schema(resolved_path)
+    if schema_validation_result.is_err():
+        error_schema = schema_validation_result.unwrap_err()
+        logger.error(f"Ingestion blocked due to schema violation: {error_schema}")
+        return Err(error_schema)
+
+    try:
+        lazy_dataframe = pl.scan_parquet(
+            source=resolved_path,
+        )
+
+        if symbols:
+            lazy_dataframe = lazy_dataframe.filter(pl.col("symbol").is_in(symbols))
+
+        if start_time is not None:
+            start_expr = pl.lit(start_time).cast(pl.Datetime("ms"))
+            lazy_dataframe = lazy_dataframe.filter(pl.col("timestamp") >= start_expr)
+
+        if end_time is not None:
+            end_expr = pl.lit(end_time).cast(pl.Datetime("ms"))
+            lazy_dataframe = lazy_dataframe.filter(pl.col("timestamp") <= end_expr)
+
+        return Ok(lazy_dataframe)
+
+    except Exception as exception:
+        logger.error(f"Ingestion failed during query construction: {exception}")
+        return Err(exception)
+
+
+__all__ = [
+    "validate_silver_schema",
+    "ingest_silver_data",
+]

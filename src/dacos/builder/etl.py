@@ -1,9 +1,3 @@
-"""
-SILVER LAKE BUILDER (THE FACTORY LOGIC)
-Location: src/dacos/builder/etl.py
-Paradigm: Pure Functions, Monadic Result, Guard Clauses, Strict Schema Enforcement.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -22,96 +16,163 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class SkinnyLakeBuilder:
+def validate_source_directory(source_path: PathLike) -> Result[Path, FileNotFoundError]:
     """
-    Builder class for constructing skinny tables following SILVER_SCHEMA
-    from raw Parquet files with Hive partitioning.
+    Validates the existence of the source directory.
+
+    Args:
+        source_path: The filesystem path to the raw data directory.
+
+    Returns:
+        Ok(Path) if the directory exists, Err(FileNotFoundError) otherwise.
     """
+    resolved_path = Path(source_path).resolve()
 
-    def __init__(self, raw_path: PathLike, silver_path: PathLike) -> None:
-        self.raw_path = Path(raw_path)
-        self.silver_path = Path(silver_path)
+    if not resolved_path.exists():
+        return Err(FileNotFoundError(f"Directory not found: {resolved_path}"))
 
-    def _validate_path(self) -> Result[bool, Exception]:
-        """Guard clause: Ensure raw path exists."""
-        if not self.raw_path.exists():
-            return Err(FileNotFoundError(f"Raw path does not exist: {self.raw_path}"))
-        return Ok(True)
+    if not resolved_path.is_dir():
+        return Err(FileNotFoundError(f"Path is not a directory: {resolved_path}"))
 
-    def _extract(self) -> LazyFrame:
-        """
-        Extract raw data lazily from Hive-partitioned directory.
-        Raises exception on failure (caught in execute_pipeline).
-        """
-        return pl.scan_parquet(
-            str(self.raw_path),
+    return Ok(resolved_path)
+
+
+def extract_raw_parquet(raw_directory: Path) -> Result[LazyFrame, Exception]:
+    """
+    Extracts raw data lazily from a Hive-partitioned Parquet directory.
+
+    Args:
+        raw_directory: The validated path to the raw Parquet directory.
+
+    Returns:
+        Ok(LazyFrame) containing the un-evaluated query plan, or Err(Exception) on read failure.
+    """
+    try:
+        # Guard clause: Prevent Polars lazy evaluation on empty directories
+        if not any(raw_directory.rglob("*.parquet")):
+            return Err(FileNotFoundError(f"No parquet files found in {raw_directory}"))
+
+        dataframe_lazy = pl.scan_parquet(
+            source=str(raw_directory),
             schema=RAW_SCHEMA,
             hive_partitioning=True,
-            cast_options=pl.ScanCastOptions(integer_cast="upcast"),
+        )
+        return Ok(dataframe_lazy)
+    except Exception as exception:
+        return Err(exception)
+
+
+def transform_to_silver_format(raw_data: LazyFrame) -> Result[LazyFrame, Exception]:
+    """
+    Transforms raw data to comply with the SILVER_SCHEMA definition.
+
+    Args:
+        raw_data: The extracted LazyFrame with RAW_SCHEMA.
+
+    Returns:
+        Ok(LazyFrame) containing the transformation plan, or Err(Exception) on failure.
+    """
+    try:
+        valid_price_volume = raw_data.filter(
+            pl.col("close").is_not_null() & (pl.col("volume") > 0.0)
         )
 
-    def _transform(self, data: LazyFrame) -> LazyFrame:
-        """
-        Transform raw data to SILVER_SCHEMA.
-        """
-        # Filter invalid rows
-        data = data.filter(
-            pl.col("close").is_not_null() & (pl.col("volume") > 0)
-        )
-
-        # Cast timestamp to Datetime('ms')
-        data = data.with_columns(
+        timestamp_casted = valid_price_volume.with_columns(
             pl.col("timestamp").cast(pl.Datetime("ms")).alias("timestamp")
         )
 
-        # Select only columns in SILVER_SCHEMA
-        silver_columns = list(SILVER_SCHEMA.keys())
-        data = data.select(silver_columns)
+        silver_columns_target = list(SILVER_SCHEMA.keys())
+        # Unpacking target columns directly into multiple string arguments to avoid GenericAlias error
+        data_selected = timestamp_casted.select(*silver_columns_target)
 
-        # Sort for deterministic order
-        data = data.sort(["symbol", "timestamp"])
+        # Using multiple strings directly instead of a list inside sort
+        data_sorted = data_selected.sort("symbol", "timestamp")
 
-        return data
-
-    def execute_pipeline(self) -> Result[str, Exception]:
-        """
-        Execute the full ETL pipeline.
-        Returns Ok(success_message) or Err(exception).
-        """
-        # 1. Validate path
-        path_check = self._validate_path()
-        if path_check.is_err():
-            return Err(path_check.unwrap_err())
-
-        try:
-            # 2. Extract
-            raw_data = self._extract()
-
-            # 3. Transform
-            silver_data = self._transform(raw_data)
-
-            # 4. Write
-            self.silver_path.mkdir(parents=True, exist_ok=True)
-            output_file = self.silver_path / "silver_master.parquet"
-            silver_data.sink_parquet(
-                output_file,
-                compression="zstd",
-                compression_level=22,
-            )
-            msg = f"✅ Silver table successfully written to {output_file}"
-            logger.info(msg)
-            return Ok(msg)
-
-        except Exception as e:
-            logger.error(f"❌ Pipeline failed during write: {e}")
-            return Err(e)
+        return Ok(data_sorted)
+    except Exception as exception:
+        return Err(exception)
 
 
-def create_skinny_builder(
-    raw_path: PathLike,
-    silver_path: PathLike,
-) -> SkinnyLakeBuilder:
-    return SkinnyLakeBuilder(raw_path, silver_path)
+def write_silver_parquet(silver_data: LazyFrame, destination_path: PathLike) -> Result[Path, Exception]:
+    """
+    Executes the lazy frame plan and writes the output to a Parquet file.
+
+    Args:
+        silver_data: The transformed LazyFrame.
+        destination_path: The filesystem path where the output directory should reside.
+
+    Returns:
+        Ok(Path) pointing to the written file, or Err(Exception) on write failure.
+    """
+    try:
+        destination_directory = Path(destination_path).resolve()
+        destination_directory.mkdir(parents=True, exist_ok=True)
+
+        output_file_path = destination_directory / "silver_master.parquet"
+
+        silver_data.sink_parquet(
+            path=output_file_path,
+            compression="zstd",
+            compression_level=22,
+        )
+
+        return Ok(output_file_path)
+    except Exception as exception:
+        return Err(exception)
 
 
-build_skinny_lake = create_skinny_builder
+def execute_etl_pipeline(raw_path: PathLike, silver_path: PathLike) -> Result[str, Exception]:
+    """
+    Executes the complete ETL pipeline from raw Parquet files to the Silver Lake.
+
+    Args:
+        raw_path: The filesystem path to the raw data directory.
+        silver_path: The filesystem path to the destination Silver Lake directory.
+
+    Returns:
+        Ok(str) with a success message, or Err(Exception) if any pipeline step fails.
+    """
+    validation_result = validate_source_directory(raw_path)
+    if validation_result.is_err():
+        error_validation = validation_result.unwrap_err()
+        logger.error(f"Pipeline failed at validation: {error_validation}")
+        return Err(error_validation)
+
+    validated_raw_path = validation_result.unwrap()
+
+    extraction_result = extract_raw_parquet(validated_raw_path)
+    if extraction_result.is_err():
+        error_extraction = extraction_result.unwrap_err()
+        logger.error(f"Pipeline failed at extraction: {error_extraction}")
+        return Err(error_extraction)
+
+    raw_lazy_frame = extraction_result.unwrap()
+
+    transformation_result = transform_to_silver_format(raw_lazy_frame)
+    if transformation_result.is_err():
+        error_transformation = transformation_result.unwrap_err()
+        logger.error(f"Pipeline failed at transformation: {error_transformation}")
+        return Err(error_transformation)
+
+    silver_lazy_frame = transformation_result.unwrap()
+
+    write_result = write_silver_parquet(silver_lazy_frame, silver_path)
+    if write_result.is_err():
+        error_write = write_result.unwrap_err()
+        logger.error(f"Pipeline failed at write: {error_write}")
+        return Err(error_write)
+
+    output_path = write_result.unwrap()
+    success_message = f"Silver table successfully written to {output_path}"
+    logger.info(success_message)
+
+    return Ok(success_message)
+
+
+__all__ = [
+    "validate_source_directory",
+    "extract_raw_parquet",
+    "transform_to_silver_format",
+    "write_silver_parquet",
+    "execute_etl_pipeline",
+]

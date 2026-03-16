@@ -9,7 +9,6 @@ from typing import Any
 
 from dacos.core import (
     create_universe_aligner,
-    create_universe_ingestor,
     create_universe_validator,
 )
 from dacos.laws import (
