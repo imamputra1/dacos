@@ -50,15 +50,48 @@ class UniverseIngestor:
             Err(exception) if any error occurs.
         """
         try:
-            pattern = str(self.silver_path / "**" / "*.parquet")
-            lazy_df: pl.LazyFrame = pl.scan_parquet(pattern)
+            if not self.silver_path.exists():
+                return Err(FileNotFoundError(f"Silver path does not exist: {self.silver_path}"))
+
+            # Skema lengkap skinny table untuk memastikan tipe konsisten
+            # Timestamp dipaksa sebagai Datetime("ms") agar kompatibel dengan alignment
+            skinny_schema = {
+                "timestamp": pl.Datetime("ms"),
+                "symbol": pl.Utf8,
+                "log_price": pl.Float64,
+                "log_volume": pl.Float64,
+            }
+
+            # Tentukan sumber data berdasarkan jenis path
+            if self.silver_path.is_dir():
+                # Direktori: scan semua file Parquet secara rekursif dengan dukungan Hive partitioning
+                lazy_df: pl.LazyFrame = pl.scan_parquet(
+                    str(self.silver_path / "**" / "*.parquet"),
+                    hive_partitioning=True,
+                    schema=skinny_schema,  # Gunakan skema lengkap
+                )
+            elif self.silver_path.is_file() and self.silver_path.suffix.lower() == ".parquet":
+                # File tunggal .parquet
+                lazy_df = pl.scan_parquet(
+                    self.silver_path,
+                    schema=skinny_schema,
+                )
+            else:
+                return Err(ValueError(
+                    f"Silver path must be a directory or a .parquet file, got: {self.silver_path}"
+                ))
+
+            # Filter berdasarkan simbol
             filtered = lazy_df.filter(pl.col("symbol").is_in(symbols))
+
+            # Kumpulkan ke DataFrame
             df = filtered.collect()
+
             logger.info(f"Loaded {len(df)} rows for symbols {symbols}")
             return Ok(df)
 
         except Exception as e:
-            logger.error(f"Failed to load universe: {e}")
+            logger.error(f"Failed to load universe: {e}", exc_info=True)
             return Err(e)
 
 

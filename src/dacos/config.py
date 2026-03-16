@@ -1,6 +1,4 @@
 """
-dacos.config - Single Source of Truth for universal constants.
-
 This module defines all magic numbers and thresholds used across the library.
 No hardcoded paths or user-specific locations are stored here.
 All constants are environment-agnostic and must be used instead of inline literals.

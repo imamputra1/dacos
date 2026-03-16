@@ -1,6 +1,4 @@
 """
-research.py - Public facade for pairs research pipeline.
-
 This module provides a single function `run_pairs_research` that orchestrates
 the entire pipeline: ingestion, alignment, validation, engine execution, and
 statistical metrics calculation. It uses Railway Oriented Programming with

@@ -1,6 +1,4 @@
 """
-dacos - Universal Python library for Medium-Frequency Trading alpha research.
-
 Arsitektur:
 - builder: ETL pipeline untuk menyiapkan data (skinny table)
 - core: Pembacaan, penyelarasan, dan validasi data

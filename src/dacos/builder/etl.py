@@ -1,7 +1,7 @@
 """
-Industrial-grade ETL pipeline for building skinny tables from raw Parquet data.
-Uses Polars lazy evaluation to avoid loading data into RAM.
-Implements Result monad for explicit error handling.
+SILVER LAKE BUILDER (THE FACTORY LOGIC)
+Location: src/dacos/builder/etl.py
+Paradigm: Pure Functions, Monadic Result, Guard Clauses, Strict Schema Enforcement.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from dacos.contracts import RAW_SCHEMA, SILVER_SCHEMA
 from dacos.protocols import PathLike
 from dacos.utils import Err, Ok, Result
 
@@ -23,95 +24,86 @@ logger = logging.getLogger(__name__)
 
 class SkinnyLakeBuilder:
     """
-    Builder class for constructing skinny tables (timestamp, symbol, log_price, log_volume)
-    from raw Parquet files.
+    Builder class for constructing skinny tables following SILVER_SCHEMA
+    from raw Parquet files with Hive partitioning.
     """
 
     def __init__(self, raw_path: PathLike, silver_path: PathLike) -> None:
-        """
-        Initialize the builder with source and destination paths.
-
-        Args:
-            raw_path: Directory containing raw Parquet files (may include subdirectories).
-            silver_path: Directory where the skinny table will be written.
-        """
         self.raw_path = Path(raw_path)
         self.silver_path = Path(silver_path)
 
+    def _validate_path(self) -> Result[bool, Exception]:
+        """Guard clause: Ensure raw path exists."""
+        if not self.raw_path.exists():
+            return Err(FileNotFoundError(f"Raw path does not exist: {self.raw_path}"))
+        return Ok(True)
+
     def _extract(self) -> LazyFrame:
         """
-        Extract raw data lazily.
-
-        Returns:
-            LazyFrame with columns: timestamp, symbol, close, volume.
+        Extract raw data lazily from Hive-partitioned directory.
+        Raises exception on failure (caught in execute_pipeline).
         """
-        # Scan all Parquet files recursively
-        pattern = str(self.raw_path / "**" / "*.parquet")
-        lazy_df = pl.scan_parquet(pattern)
-
-        # Select only required columns
-        return lazy_df.select(["timestamp", "symbol", "close", "volume"])
+        return pl.scan_parquet(
+            str(self.raw_path),
+            schema=RAW_SCHEMA,
+            hive_partitioning=True,
+            cast_options=pl.ScanCastOptions(integer_cast="upcast"),
+        )
 
     def _transform(self, data: LazyFrame) -> LazyFrame:
         """
-        Transform raw data: filter, compute log prices/volumes, sort, and select final columns.
-
-        Args:
-            data: LazyFrame with raw columns.
-
-        Returns:
-            LazyFrame with columns: timestamp, symbol, log_price, log_volume.
+        Transform raw data to SILVER_SCHEMA.
         """
-        # Guard: filter out rows with null close or zero/negative volume
+        # Filter invalid rows
         data = data.filter(
             pl.col("close").is_not_null() & (pl.col("volume") > 0)
         )
 
-        # Add log-transformed columns
+        # Cast timestamp to Datetime('ms')
         data = data.with_columns(
-            pl.col("close").log().alias("log_price"),
-            pl.col("volume").log().alias("log_volume"),
+            pl.col("timestamp").cast(pl.Datetime("ms")).alias("timestamp")
         )
 
-        # Sort by symbol and timestamp
+        # Select only columns in SILVER_SCHEMA
+        silver_columns = list(SILVER_SCHEMA.keys())
+        data = data.select(silver_columns)
+
+        # Sort for deterministic order
         data = data.sort(["symbol", "timestamp"])
 
-        # Select final columns
-        return data.select(["timestamp", "symbol", "log_price", "log_volume"])
+        return data
 
     def execute_pipeline(self) -> Result[str, Exception]:
         """
-        Execute the full ETL pipeline: extract, transform, and sink to Parquet.
-
-        Returns:
-            Ok(success_message) if successful, otherwise Err(exception).
+        Execute the full ETL pipeline.
+        Returns Ok(success_message) or Err(exception).
         """
-        try:
-            # Ensure destination directory exists
-            self.silver_path.mkdir(parents=True, exist_ok=True)
+        # 1. Validate path
+        path_check = self._validate_path()
+        if path_check.is_err():
+            return Err(path_check.unwrap_err())
 
-            # Extract
+        try:
+            # 2. Extract
             raw_data = self._extract()
 
-            # Transform
-            clean_data = self._transform(raw_data)
+            # 3. Transform
+            silver_data = self._transform(raw_data)
 
-            # Define output file path
-            output_file = self.silver_path / "skinny.parquet"
-
-            # Sink to Parquet (lazy write, no collect)
-            clean_data.sink_parquet(
+            # 4. Write
+            self.silver_path.mkdir(parents=True, exist_ok=True)
+            output_file = self.silver_path / "silver_master.parquet"
+            silver_data.sink_parquet(
                 output_file,
                 compression="zstd",
                 compression_level=22,
             )
-
-            msg = f"✅ Skinny table successfully written to {output_file}"
+            msg = f"✅ Silver table successfully written to {output_file}"
             logger.info(msg)
             return Ok(msg)
 
         except Exception as e:
-            logger.error(f"❌ Pipeline failed: {e}")
+            logger.error(f"❌ Pipeline failed during write: {e}")
             return Err(e)
 
 
@@ -119,18 +111,7 @@ def create_skinny_builder(
     raw_path: PathLike,
     silver_path: PathLike,
 ) -> SkinnyLakeBuilder:
-    """
-    Factory function to create a SkinnyLakeBuilder instance.
-
-    Args:
-        raw_path: Directory containing raw Parquet files.
-        silver_path: Directory for the skinny table.
-
-    Returns:
-        Configured SkinnyLakeBuilder.
-    """
     return SkinnyLakeBuilder(raw_path, silver_path)
 
 
-# Alias for backward compatibility
 build_skinny_lake = create_skinny_builder

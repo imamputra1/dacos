@@ -1,6 +1,4 @@
 """
-dacos.protocols - Type hints, protocols, and interfaces for the entire library.
-
 This module serves as the central "dictionary" for all data types and contracts.
 It enables IDE autocompletion, prevents circular imports, and defines the
 shape of data flowing through the system.
@@ -31,7 +29,7 @@ else:
 # ====================================================================
 
 type Symbol = str
-"""Ticker symbol, e.g., 'BTCUSDT'."""
+"""Ticker symbol, e.g., 'BTC-USDT'."""
 
 type Interval = str
 """Kline interval, e.g., '1m', '1h', '1d'."""
@@ -47,6 +45,12 @@ type Volume = float
 
 type PathLike = str | os.PathLike
 """Path-like object (string or os.PathLike)."""
+
+type Basket = list[Symbol]
+"""A basket of symbols (e.g., for multi-asset strategies)."""
+
+type BasketWeights = dict[Symbol, float]
+"""Weight allocation for each symbol in a basket (e.g., for portfolio construction)."""
 
 
 # ====================================================================
@@ -127,22 +131,78 @@ class StatisticalTestProtocol(Protocol):
 
 
 # ====================================================================
+# PROTOCOLS UNTUK STRATEGI LANJUTAN (Basket Trading, Momentum)
+# ====================================================================
+
+@runtime_checkable
+class BasketEngine(Protocol):
+    """
+    Contract for multi-asset basket strategies (e.g., PCA, Kalman filter, equal-weight).
+    Computes a synthetic spread from a basket of symbols.
+    """
+
+    def compute_spread(self, data: LazyFrame, basket: Basket) -> LazyFrame:
+        """
+        Given aligned data for multiple symbols, compute a basket spread.
+        Returns a LazyFrame with at least columns: timestamp, spread.
+        """
+        ...
+
+    def get_weights(self) -> BasketWeights | None:
+        """
+        Return the current weights of the basket (if applicable).
+        May return None if weights are not exposed.
+        """
+        ...
+
+
+@runtime_checkable
+class MomentumEngine(Protocol):
+    """
+    Contract for time series momentum strategies.
+    Computes momentum signals (e.g., moving average crossover, trend strength).
+    """
+
+    def compute_signal(self, data: LazyFrame, symbol: Symbol) -> LazyFrame:
+        """
+        Compute momentum signal for a single symbol.
+        Returns a LazyFrame with at least columns: timestamp, signal (e.g., -1, 0, 1 or continuous).
+        """
+        ...
+
+    def get_trend_strength(self, data: LazyFrame, symbol: Symbol) -> float:
+        """
+        Return a scalar measure of trend strength (e.g., slope, R²) for the latest period.
+        """
+        ...
+
+
+# ====================================================================
 # EXPORTS
 # ====================================================================
 
 __all__ = [
+    # Basic types
     "Symbol",
     "Interval",
     "Timestamp",
     "Price",
     "Volume",
     "PathLike",
+    "Basket",
+    "BasketWeights",
+    # Polars placeholders
     "LazyFrame",
     "DataFrame",
+    # Function signatures
     "TransformFunc",
     "SignalFunc",
+    # Core protocols
     "DataTransformer",
     "IngestionProtocol",
     "AlignmentProtocol",
     "StatisticalTestProtocol",
+    # Advanced strategy protocols
+    "BasketEngine",
+    "MomentumEngine",
 ]
