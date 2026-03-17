@@ -22,7 +22,9 @@ from dacos import (
 )
 from dacos.builder import execute_etl_pipeline
 from dacos.core import (
+    compute_pca_safe,
     ingest_silver_data,
+    invert_matrix_safe,
     synchronize_asset_to_master_grid_strict,
     validate_market_integrity,
     validate_silver_schema,
@@ -63,10 +65,11 @@ __all__ = [
     "protocols",
     "utils",
     "DataFrame",
+    "invert_matrix_safe",
+    "compute_pca_safe",
     "validate_silver_schema",
     "ingest_silver_data",
-    "UniverseAligner",
-    "create_universe_aligner",
+    "synchronize_asset_to_master_grid_strict",
     "validate_market_integrity",
     "calculate_hurst",
     "calculate_adf_pvalue",

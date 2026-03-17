@@ -117,5 +117,6 @@ def synchronize_asset_to_master_grid_strict(
 
 
 __all__ = [
+    "_kernel_align_and_forward_fill_strict",
     "synchronize_asset_to_master_grid_strict",
 ]

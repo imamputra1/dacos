@@ -116,5 +116,7 @@ def validate_market_integrity(
 
 
 __all__ = [
+    "_kernel_detect_flatline",
+    "_kernel_detect_spikes",
     "validate_market_integrity",
 ]
