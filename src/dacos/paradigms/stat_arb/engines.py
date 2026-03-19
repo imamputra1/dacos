@@ -1,129 +1,149 @@
-"""
-StatArbEngine: Computes hedge ratio, spread, and rolling z-score for pairs trading.
-"""
+from __future__ import annotations
 
 import numpy as np
 import polars as pl
-import statsmodels.api as sm
 
+from dacos.core import compute_pca_safe
+from dacos.protocols import DataFrame
 from dacos.utils import Err, Ok, Result
 
 
-class StatArbEngine:
+def compute_pairs_zscore(
+    aligned_data: DataFrame,
+    target_column: str,
+    anchor_column: str,
+    hedge_ratio_beta: float,
+    z_score_rolling_window: int,
+) -> Result[DataFrame, ValueError]:
     """
-    Engine for statistical arbitrage pair trading.
-    Calculates static hedge ratio via OLS, then computes spread and rolling z-score.
+    Computes the Z-Score of the log spread between two cointegrated assets.
     """
+    if len(aligned_data) == 0:
+        return Err(ValueError("Empty DataFrame provided."))
 
-    def __init__(self, zscore_window: int = 100) -> None:
-        """
-        Initialize the engine with rolling window size for z-score.
+    if target_column not in aligned_data.columns:
+        return Err(ValueError(f"Missing required column for target asset: {target_column}"))
 
-        Args:
-            zscore_window: Number of periods for rolling mean and standard deviation.
-        """
-        self.window = zscore_window
+    if anchor_column not in aligned_data.columns:
+        return Err(ValueError(f"Missing required column for anchor asset: {anchor_column}"))
 
-    def _calculate_hedge_ratio(self, y: np.ndarray, x: np.ndarray) -> float:
-        """
-        Compute hedge ratio (beta) via OLS: y = alpha + beta * x + epsilon.
+    if z_score_rolling_window < 2:
+        return Err(ValueError(f"Z-Score rolling window must be at least 2, got {z_score_rolling_window}"))
 
-        Args:
-            y: Dependent variable array (1D).
-            x: Independent variable array (1D).
+    try:
+        expr_log_target = pl.col(target_column).log()
+        expr_log_anchor = pl.col(anchor_column).log()
+        expr_log_spread = expr_log_target - (hedge_ratio_beta * expr_log_anchor)
 
-        Returns:
-            Beta coefficient.
-        """
-        X = sm.add_constant(x)
-        model = sm.OLS(y, X).fit()
-        return float(model.params[1])
+        data_with_spread = aligned_data.with_columns(
+            expr_log_spread.alias("log_spread")
+        )
 
-    def run_engine(
-        self,
-        data: pl.DataFrame,
-        y_symbol: str,
-        x_symbol: str,
-    ) -> Result[pl.DataFrame, Exception]:
-        """
-        Execute the pairs trading engine.
+        expr_mean = pl.col("log_spread").rolling_mean(window_size=z_score_rolling_window)
+        expr_std = pl.col("log_spread").rolling_std(window_size=z_score_rolling_window)
 
-        Steps:
-        1. Pivot data to wide format: one column per symbol.
-        2. Extract numpy arrays for y and x.
-        3. Compute static hedge ratio via OLS.
-        4. Compute spread = y - beta * x.
-        5. Compute rolling mean and std of spread.
-        6. Compute z-score = (spread - rolling_mean) / rolling_std.
+        data_with_stats = data_with_spread.with_columns([
+            expr_mean.alias("spread_mean"),
+            expr_std.alias("spread_std")
+        ])
 
-        Args:
-            data: Long-format DataFrame with columns 'timestamp', 'symbol', 'log_price'.
-            y_symbol: Symbol of the dependent (Y) asset.
-            x_symbol: Symbol of the independent (X) asset.
+        expr_z_score = pl.when(pl.col("spread_std") <= 1e-8).then(0.0).otherwise(
+            (pl.col("log_spread") - pl.col("spread_mean")) / pl.col("spread_std")
+        ).fill_nan(0.0)
 
-        Returns:
-            Ok(DataFrame) with additional columns: spread, spread_mean, spread_std, z_score.
-            Err(exception) if any step fails.
-        """
-        try:
-            if data.is_empty():
-                return Err(ValueError("Input data is empty"))
+        data_final = data_with_stats.with_columns(
+            expr_z_score.alias("z_score")
+        )
 
-            data_wide = data.select(["timestamp", "symbol", "log_price"]).pivot(
-                values="log_price",
-                index="timestamp",
-                on="symbol",
-            )
+        return Ok(data_final)
 
-            if data_wide.is_empty():
-                return Err(ValueError("Pivoted data is empty"))
-
-            if y_symbol not in data_wide.columns:
-                return Err(ValueError(f"Symbol {y_symbol} not found after pivot"))
-            if x_symbol not in data_wide.columns:
-                return Err(ValueError(f"Symbol {x_symbol} not found after pivot"))
-
-            data_wide = data_wide.drop_nulls()
-
-            if data_wide.is_empty():
-                return Err(ValueError("No complete rows after dropping nulls"))
-
-            arr_y = data_wide.get_column(y_symbol).to_numpy()
-            arr_x = data_wide.get_column(x_symbol).to_numpy()
-
-            beta = self._calculate_hedge_ratio(arr_y, arr_x)
-
-            data_wide = data_wide.with_columns(
-                (pl.col(y_symbol) - beta * pl.col(x_symbol)).alias("spread")
-            )
-
-            data_wide = data_wide.with_columns([
-                pl.col("spread")
-                .rolling_mean(window_size=self.window, min_samples=self.window)
-                .alias("spread_mean"),
-                pl.col("spread")
-                .rolling_std(window_size=self.window, min_samples=self.window)
-                .alias("spread_std"),
-            ])
-
-            data_wide = data_wide.with_columns([
-                ((pl.col("spread") - pl.col("spread_mean")) / pl.col("spread_std")).alias("z_score")
-            ])
-
-            return Ok(data_wide)
-
-        except Exception as e:
-            return Err(e)
+    except Exception as computation_error:
+        return Err(ValueError(f"Pairs Z-Score computation failed: {computation_error}"))
 
 
-def create_stat_arb_engine(zscore_window: int = 100) -> StatArbEngine:
+def compute_basket_zscore(
+    aligned_data: DataFrame,
+    target_column: str,
+    basket_columns: list[str],
+    z_score_rolling_window: int,
+) -> Result[DataFrame, ValueError]:
     """
-    Factory function to create a StatArbEngine instance.
-
-    Args:
-        zscore_window: Rolling window size for z-score calculation.
-
-    Returns:
-        Configured StatArbEngine.
+    Computes the Z-Score of a Target Asset against a Synthetic PCA Basket.
     """
-    return StatArbEngine(zscore_window=zscore_window)
+    if len(aligned_data) == 0:
+        return Err(ValueError("Empty DataFrame provided."))
+
+    if target_column not in aligned_data.columns:
+        return Err(ValueError(f"Missing required target column: {target_column}"))
+
+    for col in basket_columns:
+        if col not in aligned_data.columns:
+            return Err(ValueError(f"Missing required basket column: {col}"))
+
+    if len(basket_columns) < 2:
+        return Err(ValueError("PCA Basket Engine requires at least 2 anchor assets."))
+
+    if z_score_rolling_window < 2:
+        return Err(ValueError(f"Z-Score rolling window must be at least 2, got {z_score_rolling_window}"))
+
+    try:
+        all_assets = [target_column] + basket_columns
+        returns_expressions = [
+            pl.col(asset).log().diff().alias(f"{asset}_ret") for asset in all_assets
+        ]
+        data_with_returns = aligned_data.with_columns(returns_expressions)
+
+        basket_return_columns = [f"{asset}_ret" for asset in basket_columns]
+        matrix_for_pca = data_with_returns.select(basket_return_columns).drop_nulls().to_numpy()
+
+        pca_result = compute_pca_safe(matrix_for_pca)
+        if pca_result.is_err():
+            return Err(ValueError(f"PCA computation kernel panic: {pca_result.unwrap_err()}"))
+
+        _, eigenvectors = pca_result.unwrap()
+
+        pc1_raw_weights = eigenvectors[:, 0]
+        if np.sum(pc1_raw_weights) < 0:
+            pc1_raw_weights = -pc1_raw_weights
+
+        pc1_weights = pc1_raw_weights / np.sum(np.abs(pc1_raw_weights))
+
+        synthetic_anchor_expression = pl.sum_horizontal([
+            pl.col(col_name) * float(weight)
+            for col_name, weight in zip(basket_return_columns, pc1_weights)
+        ])
+
+        target_return_col = f"{target_column}_ret"
+        spread_expression = pl.col(target_return_col) - synthetic_anchor_expression
+
+        data_with_spread = data_with_returns.with_columns([
+            synthetic_anchor_expression.alias("synthetic_anchor_return"),
+            spread_expression.alias("basket_spread")
+        ])
+
+        expr_mean = pl.col("basket_spread").rolling_mean(window_size=z_score_rolling_window)
+        expr_std = pl.col("basket_spread").rolling_std(window_size=z_score_rolling_window)
+
+        data_with_stats = data_with_spread.with_columns([
+            expr_mean.alias("spread_mean"),
+            expr_std.alias("spread_std")
+        ])
+
+        expr_z_score = pl.when(pl.col("spread_std") <= 1e-8).then(0.0).otherwise(
+            (pl.col("basket_spread") - pl.col("spread_mean")) / pl.col("spread_std")
+        ).fill_nan(0.0)
+
+        data_final = data_with_stats.with_columns(
+            expr_z_score.alias("z_score")
+        )
+
+        return Ok(data_final)
+
+    except Exception as computation_error:
+        return Err(ValueError(f"Basket Z-Score computation failed: {computation_error}"))
+
+
+__all__ = [
+    "compute_pairs_zscore",
+    "compute_basket_zscore",
+]

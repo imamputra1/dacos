@@ -40,8 +40,8 @@ from dacos.laws import (
     compute_yang_zhang_safe,
 )
 from dacos.paradigms import (
-    StatArbEngine,
-    create_stat_arb_engine,
+    compute_basket_zscore,
+    compute_pairs_zscore,
 )
 from dacos.protocols import DataFrame
 
@@ -84,8 +84,8 @@ __all__ = [
     "compute_garman_klass_safe",
     "compute_donchian_channels_safe",
     "compute_atr_safe",
-    "StatArbEngine",
-    "create_stat_arb_engine",
+    "compute_pairs_zscore",
+    "compute_basket_zscore",
     "execute_etl_pipeline",
     "Result",
     "Ok",
