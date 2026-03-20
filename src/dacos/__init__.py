@@ -41,6 +41,7 @@ from dacos.laws import (
 )
 from dacos.paradigms import (
     apply_mean_reversion_tactics_strict,
+    apply_momentum_tactics_strict,
     compute_basket_zscore,
     compute_pairs_zscore,
     compute_tsm_indicators,
@@ -89,6 +90,7 @@ __all__ = [
     "compute_pairs_zscore",
     "compute_basket_zscore",
     "apply_mean_reversion_tactics_strict",
+    "apply_momentum_tactics_strict",
     "compute_tsm_indicators",
     "execute_etl_pipeline",
     "Result",

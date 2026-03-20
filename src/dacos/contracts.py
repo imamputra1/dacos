@@ -51,28 +51,28 @@ Skema untuk data silver (skinny table) setelah proses ETL.
 # 3. KONTRAK DATA EKSEKUSI (SIGNAL / BATCH OUTPUT)
 # Dirancang KHUSUS untuk lolos dari 'SignalValidator' di orca/filters.py
 # ==========================================
-SIGNAL_SCHEMA = {
+# 2. BASE SIGNAL SCHEMA (Wajib ada di semua strategi untuk Orca)
+BASE_SIGNAL_SCHEMA = {
     "timestamp": pl.Datetime("ms"),
     "symbol": pl.String,
     "action": pl.String,
     "position": pl.Int8,
     "strength": pl.Float64,
+}
+
+# 3. STRATEGY-SPECIFIC SCHEMAS (Ekstensi untuk Metadata)
+STAT_ARB_SIGNAL_SCHEMA = {
+    **BASE_SIGNAL_SCHEMA,
     "z_score": pl.Float64,
     "spread": pl.Float64
 }
-"""
-Skema untuk sinyal trading yang dihasilkan oleh engine.
-- timestamp: waktu sinyal
-- symbol: pasangan perdagangan
-- action: aksi yang direkomendasikan (string sesuai definisi Orca)
-- position: posisi numerik (-1, 0, 1)
-- strength: kekuatan sinyal (biasanya |z-score|)
-- z_score: nilai z-score mentah
-- spread: nilai spread mentah
-"""
+
+TSM_SIGNAL_SCHEMA = {
+    **BASE_SIGNAL_SCHEMA,
+    "atr": pl.Float64
+}
 
 __all__ = [
-    "RAW_SCHEMA",
-    "SILVER_SCHEMA",
-    "SIGNAL_SCHEMA",
+    "RAW_SCHEMA", "SILVER_SCHEMA",
+    "BASE_SIGNAL_SCHEMA", "STAT_ARB_SIGNAL_SCHEMA", "TSM_SIGNAL_SCHEMA"
 ]

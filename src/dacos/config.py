@@ -23,3 +23,22 @@ MAX_CPU_WORKERS: Final[int] = 3
 # ====================================================================
 COLUMN_TIMESTAMP: Final[str] = "timestamp"
 COLUMN_SYMBOL: Final[str] = "symbol"
+
+# ====================================================================
+# ZONE 4: STRATEGY DEFAULT CONFIGURATIONS (IMMUTABLE)
+# ====================================================================
+@dataclass(frozen=True)
+class StatArbConfig:
+    """Default parameters for Statistical Arbitrage / Pairs Trading."""
+    z_window: int = 50
+    entry_z: float = 2.0
+    exit_z: float = 0.5
+    allow_short: bool = True
+
+@dataclass(frozen=True)
+class TSMConfig:
+    """Default parameters for Time Series Momentum (CTA)."""
+    donchian_window: int = 20
+    atr_window: int = 14
+    target_risk_pct: float = 0.01  # 1% risk sizing
+    allow_short: bool = True

@@ -1,6 +1,6 @@
 [project]
 name = "dacos"
-version = "0.1.1"
+version = "0.1.2"
 description = "Deterministic Data Orchestrator for Quantitative Trading"
 authors = [{ name = "Imam Putra", email = "a.i.syahputra415@gmail.com" }]
 license = { text = "MIT" }
