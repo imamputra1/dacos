@@ -40,8 +40,10 @@ from dacos.laws import (
     compute_yang_zhang_safe,
 )
 from dacos.paradigms import (
+    apply_mean_reversion_tactics_strict,
     compute_basket_zscore,
     compute_pairs_zscore,
+    compute_tsm_indicators,
 )
 from dacos.protocols import DataFrame
 
@@ -86,6 +88,8 @@ __all__ = [
     "compute_atr_safe",
     "compute_pairs_zscore",
     "compute_basket_zscore",
+    "apply_mean_reversion_tactics_strict",
+    "compute_tsm_indicators",
     "execute_etl_pipeline",
     "Result",
     "Ok",
