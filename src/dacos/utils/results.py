@@ -16,7 +16,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import (
     Any,
-    Generic,
     NoReturn,
     ParamSpec,
     TypeVar,
@@ -35,7 +34,7 @@ P = ParamSpec("P")  # Function parameters
 
 
 @dataclass(frozen=True, slots=True)
-class Ok(Generic[T]):
+class Ok[T]:
     """Success container - immutable monadic value."""
 
     value: T
@@ -112,7 +111,7 @@ class Ok(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class Err(Generic[E]):
+class Err[E]:
     """Error container - immutable monadic value."""
 
     error: E
@@ -210,7 +209,7 @@ def match_result(
 # ====================== DECORATORS FOR EXCEPTION HANDLING ======================
 
 
-def safe(func: Callable[P, T]) -> Callable[P, Result[T, Exception]]:
+def safe[**P, T](func: Callable[P, T]) -> Callable[P, Result[T, Exception]]:
     """Wrap synchronous function to return Result monad."""
 
     @functools.wraps(func)
@@ -224,7 +223,7 @@ def safe(func: Callable[P, T]) -> Callable[P, Result[T, Exception]]:
     return wrapper
 
 
-def safe_async(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[Result[T, Exception]]]:
+def safe_async[**P, T](func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[Result[T, Exception]]]:
     """Wrap asynchronous function to return Result monad."""
 
     @functools.wraps(func)
@@ -242,7 +241,7 @@ def safe_async(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[Result[
 # ====================== MONADIC COMPOSITION UTILITIES ======================
 
 
-class ResultBuilder(Generic[E]):
+class ResultBuilder[E]:
     """Monadic builder for chaining Result operations."""
 
     @staticmethod
@@ -341,7 +340,7 @@ def with_retry(
     return decorator
 
 
-async def with_retry_async(
+async def with_retry_async[**P, T, E](
     func: Callable[P, Awaitable[Result[T, E]]],
     config: RetryConfig | None = None,
 ) -> Callable[P, Awaitable[Result[T, E]]]:
@@ -374,7 +373,7 @@ async def with_retry_async(
 
 
 @dataclass(frozen=True, slots=True)
-class Some(Generic[T]):
+class Some[T]:
     """Some value container (Rust's Some)."""
 
     value: T
@@ -428,7 +427,7 @@ NoneType = _None()
 # ====================== ADVANCED MONADIC OPERATIONS ======================
 
 
-def try_all(*operations: Callable[[], Result[T, E]]) -> Result[list[T], list[E]]:
+def try_all[T, E](*operations: Callable[[], Result[T, E]]) -> Result[list[T], list[E]]:
     """Try all operations, collect all results/errors."""
     results = []
     errors = []
@@ -536,11 +535,11 @@ def is_err(result: Result[Any, Any]) -> bool:
     return isinstance(result, Err)
 
 
-def as_optional(result: Result[T, E]) -> T | None:
+def as_optional[T, E](result: Result[T, E]) -> T | None:
     return result.ok()
 
 
-def from_optional(value: T | None, error: E) -> Result[T, E]:
+def from_optional[T, E](value: T | None, error: E) -> Result[T, E]:
     if value is None:
         return Err(error)
     return Ok(value)
