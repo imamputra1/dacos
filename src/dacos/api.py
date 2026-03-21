@@ -1,145 +1,114 @@
 """
-This module exposes the main 4 endpoints for the Dacos library.
-No mathematical business logic is allowed here.
+DACOS PUBLIC API (THE CONDUCTOR)
+Location: src/dacos/api.py
+Paradigm: Separation of Concerns, Railway Oriented Programming (ROP), 100% Monadic Boundary.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
 
 from dacos.config import StatArbConfig, TSMConfig
-
-# Import Engines
-from dacos.paradigms import compute_pairs_zscore
-
-# Import Tactics
-from dacos.paradigms.stat_arb.tactics import apply_mean_reversion_tactics_strict
-from dacos.paradigms.tsm.engine import compute_tsm_indicators
-from dacos.paradigms.tsm.tactics import apply_momentum_tactics_strict
+from dacos.paradigms import (
+    apply_mean_reversion_tactics_strict,
+    apply_momentum_tactics_strict,
+    compute_pairs_zscore,
+    compute_tsm_indicators,
+)
 from dacos.protocols import DataFrame
 from dacos.utils import Err, Ok, Result
 
-# Asumsi fungsi ingestion tersedia (sesuaikan dengan struktur file Anda)
-# from dacos.core.data import ingest_silver_data
-
-# ============================================================================
-# EXECUTIVE LOGGER CONFIGURATION
-# ============================================================================
 logger = logging.getLogger(__name__)
 
-
 # ============================================================================
-# PILAR 2: THE VECTORIZED RAILWAY (RESEARCH MODE)
+# PILAR 1: THE VECTORIZED RAILWAY (RESEARCH MODE)
 # ============================================================================
-
 
 def run_stat_arb_research(
-    aligned_data: DataFrame,  # Data yang sudah melalui ingest_silver_data & sejajar
+    aligned_data: DataFrame,
     target_symbol: str,
     anchor_symbol: str,
     hedge_ratio_beta: float,
     config: StatArbConfig | None = None,
 ) -> Result[DataFrame, ValueError]:
-    """
-    (Mode 1) Executes a full vectorized backtest pipeline for Statistical Arbitrage.
-    Args:
-        aligned_data: Polars DataFrame containing aligned 'target' and 'anchor' price columns.
-        target_symbol: The coin being traded (Y).
-        anchor_symbol: The hedge coin (X).
-        hedge_ratio_beta: The cointegration multiplier binding X to Y.
-        config: Immutable StatArb configuration. Defaults to StatArbConfig().
-
-    Returns:
-        Ok(DataFrame) matching STAT_ARB_SIGNAL_SCHEMA, or Err(ValueError).
-    """
     config = config or StatArbConfig()
+    prefix = f"[STAT-ARB | RESEARCH | {target_symbol}]"
+
+    if not isinstance(aligned_data, pl.DataFrame) or aligned_data.is_empty():
+        return Err(ValueError(f"{prefix} API Rejected: Empty or invalid DataFrame provided."))
 
     try:
-        logger.info(f"START [StatArb Research]: Evaluating {target_symbol} vs {anchor_symbol}")
-
-        # 1. Stasiun Mesin (Engines)
-        logger.info("--> Entering Engine Station: Computing Z-Scores...")
-        engine_res = compute_pairs_zscore(
+        engine_step = compute_pairs_zscore(
             aligned_data=aligned_data,
             target_column=target_symbol,
             anchor_column=anchor_symbol,
             hedge_ratio_beta=hedge_ratio_beta,
-            z_score_rolling_window=config.z_window,
+            z_score_rolling_window=config.z_window
         )
-        if engine_res.is_err():
-            logger.error(f"Engine Failure: {engine_res.unwrap_err()}")
-            return engine_res
+        if engine_step.is_err():
+            return Err(engine_step.unwrap_err())  # Propagate explicitly
 
-        # 2. Stasiun Taktik & Bea Cukai (Tactics & Schema Enforcement)
-        logger.info("--> Entering Tactics Station: Translating continuous metrics to discrete signals...")
-        tactics_res = apply_mean_reversion_tactics_strict(data=engine_res.unwrap(), symbol=target_symbol, config=config)
-        if tactics_res.is_err():
-            logger.error(f"Tactics Failure: {tactics_res.unwrap_err()}")
-            return tactics_res
+        tactics_step = apply_mean_reversion_tactics_strict(
+            data=engine_step.unwrap(),
+            symbol=target_symbol,
+            config=config
+        )
+        if tactics_step.is_err():
+            return Err(tactics_step.unwrap_err())
 
-        logger.info(f"SUCCESS [StatArb Research]: Pipeline completed for {target_symbol}.")
-        return Ok(tactics_res.unwrap())
+        # FIX MYPY: Beri tahu MyPy secara eksplisit bahwa hasilnya adalah DataFrame
+        final_df = cast(pl.DataFrame, tactics_step.unwrap())
+        return Ok(final_df)
 
     except Exception as e:
-        logger.error(f"PANIC [StatArb Research]: Unhandled exception breached the pipeline: {e}")
-        return Err(ValueError(f"StatArb Pipeline Panic: {e}"))
+        logger.exception(f"{prefix} UNHANDLED PANIC.")
+        return Err(ValueError(f"StatArb Pipeline Panic: {str(e)}"))
 
 
 def run_tsm_research(
-    silver_data: DataFrame,  # Data yang sudah melalui ingest_silver_data
+    silver_data: DataFrame,
     target_symbol: str,
     config: TSMConfig | None = None,
 ) -> Result[DataFrame, ValueError]:
-    """
-    (Mode 1) Executes a full vectorized backtest pipeline for Time Series Momentum (CTA).
-
-    Args:
-        silver_data: Polars DataFrame containing standard OHLCV columns.
-        target_symbol: The asset being evaluated.
-        config: Immutable TSM configuration. Defaults to TSMConfig().
-
-    Returns:
-        Ok(DataFrame) matching TSM_SIGNAL_SCHEMA, or Err(ValueError).
-    """
     config = config or TSMConfig()
+    prefix = f"[TSM | RESEARCH | {target_symbol}]"
+
+    if not isinstance(silver_data, pl.DataFrame) or silver_data.is_empty():
+        return Err(ValueError(f"{prefix} API Rejected: Empty or invalid DataFrame provided."))
 
     try:
-        logger.info(f"START [TSM Research]: Evaluating {target_symbol}")
-
-        # 1. Stasiun Mesin (Engines)
-        logger.info("--> Entering Engine Station: Computing Donchian Channels & ATR...")
-        engine_res = compute_tsm_indicators(
-            data=silver_data, atr_window=config.atr_window, donchian_window=config.donchian_window
+        engine_step = compute_tsm_indicators(
+            data=silver_data,
+            atr_window=config.atr_window,
+            donchian_window=config.donchian_window
         )
-        if engine_res.is_err():
-            logger.error(f"Engine Failure: {engine_res.unwrap_err()}")
-            return engine_res
+        if engine_step.is_err():
+            return Err(engine_step.unwrap_err())
 
-        # 2. Stasiun Taktik & Bea Cukai (Tactics & Schema Enforcement)
-        logger.info("--> Entering Tactics Station: Applying Breakout & Risk Parity sizing...")
-        tactics_res = apply_momentum_tactics_strict(
-            data=engine_res.unwrap(), target_symbol=target_symbol, config=config
+        tactics_step = apply_momentum_tactics_strict(
+            data=engine_step.unwrap(),
+            target_symbol=target_symbol,
+            config=config
         )
-        if tactics_res.is_err():
-            logger.error(f"Tactics Failure: {tactics_res.unwrap_err()}")
-            return tactics_res
+        if tactics_step.is_err():
+            return Err(tactics_step.unwrap_err())
 
-        logger.info(f"SUCCESS [TSM Research]: Pipeline completed for {target_symbol}.")
-        return Ok(tactics_res.unwrap())
+        # FIX MYPY: Beri tahu MyPy secara eksplisit bahwa hasilnya adalah DataFrame
+        final_df = cast(pl.DataFrame, tactics_step.unwrap())
+        return Ok(final_df)
 
     except Exception as e:
-        logger.error(f"PANIC [TSM Research]: Unhandled exception breached the pipeline: {e}")
-        return Err(ValueError(f"TSM Pipeline Panic: {e}"))
+        logger.exception(f"{prefix} UNHANDLED PANIC.")
+        return Err(ValueError(f"TSM Pipeline Panic: {str(e)}"))
 
 
 # ============================================================================
 # PILAR 2: THE LIVE TICK PIPELINE (EXECUTION MODE)
 # ============================================================================
-
 
 def evaluate_stat_arb_live(
     live_buffer: DataFrame | dict[str, Any],
@@ -148,25 +117,9 @@ def evaluate_stat_arb_live(
     hedge_ratio_beta: float,
     config: StatArbConfig | None = None,
 ) -> Result[dict[str, Any], ValueError]:
-    """
-    (Mode 2) High-speed evaluation of a single live tick/buffer for Statistical Arbitrage.
-    Bypasses Ingestion and Cointegration Testing.
-
-    Args:
-        live_buffer: Small DataFrame or Dict containing the recent lookback window.
-        target_symbol: The coin being traded (Y).
-        anchor_symbol: The hedge coin (X).
-        hedge_ratio_beta: The pre-calculated beta from the research phase.
-        config: Immutable StatArb configuration.
-
-    Returns:
-        Ok(Dict) containing exactly one actionable signal matching STAT_ARB_SIGNAL_SCHEMA.
-    """
-
     config = config or StatArbConfig()
 
     try:
-        # SURGERY: Mesin StatArb Polars mewajibkan DataFrame. Casting dict (20 rows) membutuhkan < 1ms.
         df_buffer = pl.DataFrame(live_buffer) if isinstance(live_buffer, dict) else live_buffer
 
         engine_step = compute_pairs_zscore(
@@ -174,17 +127,25 @@ def evaluate_stat_arb_live(
             target_column=target_symbol,
             anchor_column=anchor_symbol,
             hedge_ratio_beta=hedge_ratio_beta,
-            z_score_rolling_window=config.z_window,
+            z_score_rolling_window=config.z_window
         )
         if engine_step.is_err():
-            return engine_step
+            return Err(engine_step.unwrap_err())
 
-        # Ambil baris terujung (Latest Tick) dan suapkan ke Tactics Mode 2 (Dict)
         latest_tick = engine_step.unwrap().row(-1, named=True)
-        return apply_mean_reversion_tactics_strict(data=latest_tick, symbol=target_symbol, config=config)
+        tactics_res = apply_mean_reversion_tactics_strict(
+            data=latest_tick,
+            symbol=target_symbol,
+            config=config
+        )
+        if tactics_res.is_err():
+            return Err(tactics_res.unwrap_err())
+
+        # FIX MYPY: Casting eksplisit ke Dict
+        final_dict = cast(dict[str, Any], tactics_res.unwrap())
+        return Ok(final_dict)
 
     except Exception as e:
-        logger.error(f"[STAT-ARB | LIVE | {target_symbol}] Panic: {e}")
         return Err(ValueError(f"StatArb Live Panic: {str(e)}"))
 
 
@@ -193,45 +154,51 @@ def evaluate_tsm_live(
     target_symbol: str,
     config: TSMConfig | None = None,
 ) -> Result[dict[str, Any], ValueError]:
-    """(Mode 2) High-speed evaluation of a single live tick/buffer for Time Series Momentum."""
     config = config or TSMConfig()
 
     try:
         engine_step = compute_tsm_indicators(
-            data=live_buffer, atr_window=config.atr_window, donchian_window=config.donchian_window
+            data=live_buffer,
+            atr_window=config.atr_window,
+            donchian_window=config.donchian_window
         )
         if engine_step.is_err():
-            return engine_step
+            return Err(engine_step.unwrap_err())
 
         engine_data = engine_step.unwrap()
 
-        # SURGERY: Rekonstruksi Dict jika data dari Numba (yang tidak membawa timestamp)
-        if isinstance(live_buffer, dict):
-            # Ambil elemen terakhir dari array timestamp/closets
-            ts = (
-                live_buffer["timestamp"][-1]
-                if isinstance(live_buffer["timestamp"], list | np.ndarray)
-                else live_buffer["timestamp"]
-            )
-            cl = (
-                live_buffer["close"][-1]
-                if isinstance(live_buffer["close"], list | np.ndarray)
-                else live_buffer["close"]
-            )
+        # FIX MYPY: Evaluasi `engine_data` secara eksplisit agar MyPy paham itu Dict atau DataFrame
+        if isinstance(engine_data, dict):
+            # Casting aman karena jika masuk sini, live_buffer pasti dict yang punya list/ndarray
+            ts_list = cast(Any, live_buffer)["timestamp"]
+            cl_list = cast(Any, live_buffer)["close"]
+
+            ts = ts_list[-1] if isinstance(ts_list, list | np.ndarray) else ts_list
+            cl = cl_list[-1] if isinstance(cl_list, list | np.ndarray) else cl_list
 
             engine_data["timestamp"] = ts
             engine_data["close"] = cl
             latest_tick = engine_data
-
-        else:
+        elif isinstance(engine_data, pl.DataFrame):
             latest_tick = engine_data.row(-1, named=True)
+        else:
+            return Err(ValueError("Engine returned invalid data type."))
 
-        return apply_momentum_tactics_strict(data=latest_tick, target_symbol=target_symbol, config=config)
+        tactics_res = apply_momentum_tactics_strict(
+            data=latest_tick,
+            target_symbol=target_symbol,
+            config=config
+        )
+
+        if tactics_res.is_err():
+            return Err(tactics_res.unwrap_err())
+
+        # FIX MYPY: Casting eksplisit ke Dict
+        final_dict = cast(dict[str, Any], tactics_res.unwrap())
+        return Ok(final_dict)
 
     except Exception as e:
-        logger.error(f"[TSM | LIVE | {target_symbol}] Panic: {e}")
         return Err(ValueError(f"TSM Live Panic: {str(e)}"))
-
 
 __all__ = [
     "run_stat_arb_research",

@@ -45,5 +45,11 @@ class TSMConfig:
 
     donchian_window: int = 20
     atr_window: int = 14
-    target_risk_pct: float = 0.01  # 1% risk sizing
+    target_risk_pct: float = 0.01
     allow_short: bool = True
+
+
+__all__ = [
+    "StatArbConfig",
+    "TSMConfig",
+]

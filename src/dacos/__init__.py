@@ -12,6 +12,7 @@ Architecture:
 
 __version__ = "0.1.1"
 
+
 # ============================================================================
 # 1. SUBMODULE EXPORTS
 # ============================================================================
@@ -31,6 +32,7 @@ from .api import (
 # 3. BUILDER & CORE PIPELINE
 # ============================================================================
 from .builder import execute_etl_pipeline
+from .config import StatArbConfig, TSMConfig
 from .core import (
     compute_pca_safe,
     ingest_silver_data,
@@ -95,6 +97,8 @@ __all__ = [
     "paradigms",
     "protocols",
     "utils",
+    "StatArbConfig",
+    "TSMConfig",
     # Public API Endpoints
     "run_stat_arb_research",
     "run_tsm_research",
