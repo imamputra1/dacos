@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # PILAR 1: THE VECTORIZED RAILWAY (RESEARCH MODE)
 # ============================================================================
 
+
 def run_stat_arb_research(
     aligned_data: DataFrame,
     target_symbol: str,
@@ -47,15 +48,13 @@ def run_stat_arb_research(
             target_column=target_symbol,
             anchor_column=anchor_symbol,
             hedge_ratio_beta=hedge_ratio_beta,
-            z_score_rolling_window=config.z_window
+            z_score_rolling_window=config.z_window,
         )
         if engine_step.is_err():
             return Err(engine_step.unwrap_err())  # Propagate explicitly
 
         tactics_step = apply_mean_reversion_tactics_strict(
-            data=engine_step.unwrap(),
-            symbol=target_symbol,
-            config=config
+            data=engine_step.unwrap(), symbol=target_symbol, config=config
         )
         if tactics_step.is_err():
             return Err(tactics_step.unwrap_err())
@@ -82,17 +81,13 @@ def run_tsm_research(
 
     try:
         engine_step = compute_tsm_indicators(
-            data=silver_data,
-            atr_window=config.atr_window,
-            donchian_window=config.donchian_window
+            data=silver_data, atr_window=config.atr_window, donchian_window=config.donchian_window
         )
         if engine_step.is_err():
             return Err(engine_step.unwrap_err())
 
         tactics_step = apply_momentum_tactics_strict(
-            data=engine_step.unwrap(),
-            target_symbol=target_symbol,
-            config=config
+            data=engine_step.unwrap(), target_symbol=target_symbol, config=config
         )
         if tactics_step.is_err():
             return Err(tactics_step.unwrap_err())
@@ -109,6 +104,7 @@ def run_tsm_research(
 # ============================================================================
 # PILAR 2: THE LIVE TICK PIPELINE (EXECUTION MODE)
 # ============================================================================
+
 
 def evaluate_stat_arb_live(
     live_buffer: DataFrame | dict[str, Any],
@@ -127,17 +123,13 @@ def evaluate_stat_arb_live(
             target_column=target_symbol,
             anchor_column=anchor_symbol,
             hedge_ratio_beta=hedge_ratio_beta,
-            z_score_rolling_window=config.z_window
+            z_score_rolling_window=config.z_window,
         )
         if engine_step.is_err():
             return Err(engine_step.unwrap_err())
 
         latest_tick = engine_step.unwrap().row(-1, named=True)
-        tactics_res = apply_mean_reversion_tactics_strict(
-            data=latest_tick,
-            symbol=target_symbol,
-            config=config
-        )
+        tactics_res = apply_mean_reversion_tactics_strict(data=latest_tick, symbol=target_symbol, config=config)
         if tactics_res.is_err():
             return Err(tactics_res.unwrap_err())
 
@@ -158,9 +150,7 @@ def evaluate_tsm_live(
 
     try:
         engine_step = compute_tsm_indicators(
-            data=live_buffer,
-            atr_window=config.atr_window,
-            donchian_window=config.donchian_window
+            data=live_buffer, atr_window=config.atr_window, donchian_window=config.donchian_window
         )
         if engine_step.is_err():
             return Err(engine_step.unwrap_err())
@@ -184,11 +174,7 @@ def evaluate_tsm_live(
         else:
             return Err(ValueError("Engine returned invalid data type."))
 
-        tactics_res = apply_momentum_tactics_strict(
-            data=latest_tick,
-            target_symbol=target_symbol,
-            config=config
-        )
+        tactics_res = apply_momentum_tactics_strict(data=latest_tick, target_symbol=target_symbol, config=config)
 
         if tactics_res.is_err():
             return Err(tactics_res.unwrap_err())
@@ -199,6 +185,7 @@ def evaluate_tsm_live(
 
     except Exception as e:
         return Err(ValueError(f"TSM Live Panic: {str(e)}"))
+
 
 __all__ = [
     "run_stat_arb_research",
