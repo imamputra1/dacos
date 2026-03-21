@@ -495,12 +495,11 @@ class ResultContext:
                     return Ok(func(*args, **kwargs))
                 except Exception as e:
                     return Err(e)
+            # --- TAMBAHKAN BARIS INI UNTUK MEMBUNGKAM MYPY ---
+            return Err(Exception("Unreachable context state"))
 
         return wrapper
 
-
-# type: ignore[return-value]
-# type: ignore[return]
 
 # ====================== PERFORMANCE MONITORING ======================
 
