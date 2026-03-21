@@ -1,0 +1,24 @@
+# Konfigurasi Satpam Lokal (Pre-commit)
+# File: .pre-commit-config.yaml
+
+repos:
+  # 1. STANDAR KEBERSIHAN DASAR
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace    # Menghapus spasi gaib di ujung baris
+      - id: end-of-file-fixer      # Memastikan file diakhiri dengan baris kosong
+      - id: check-yaml             # Memastikan file YAML Anda tidak error
+      - id: check-toml             # Memastikan pyproject.toml Anda valid
+      - id: check-added-large-files # Mencegah Anda ter-commit file data .csv/.parquet raksasa!
+
+  # 2. RUFF: SANG PENGEKSEKUSI (LINTER & FORMATTER KILAT)
+  # Kita menggunakan Ruff karena ia 10-100x lebih cepat dari Flake8/Black
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0  # Sesuaikan dengan versi ruff di pyproject.toml Anda jika perlu
+    hooks:
+      # Jalankan linter dan otomatis perbaiki masalah yang bisa diperbaiki (seperti import yang tidak terpakai)
+      - id: ruff
+        args: [ --fix ]
+      # Jalankan formatter agar spasi dan tanda kutip seragam di seluruh tim
+      - id: ruff-format

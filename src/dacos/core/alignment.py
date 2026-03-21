@@ -15,7 +15,7 @@ def _kernel_align_and_forward_fill_strict(
 ) -> np.ndarray:
     """
     Numba-accelerated Two-Pointer kernel to align target prices to a master time grid.
-    
+
     Args:
         master_timestamps: 1D Numpy array of int64 representing the master time grid.
         target_timestamps: 1D Numpy array of int64 representing the target asset's time grid.
@@ -59,7 +59,7 @@ def synchronize_asset_to_master_grid_strict(
 ) -> Result[np.ndarray, ValueError]:
     """
     Synchronizes an asset's price vector to a master time grid using a safe Monadic wrapper.
-    
+
     Args:
         master_time_grid: 1D Numpy array of int64 timestamps (the anchor timeline).
         asset_timestamps: 1D Numpy array of int64 timestamps (the target asset).
@@ -86,7 +86,9 @@ def synchronize_asset_to_master_grid_strict(
 
     # O(1) Endpoint Monotonicity Check (Polars ETL should guarantee strict sorting, this is a fast safety net)
     if asset_timestamps.shape[0] > 1 and asset_timestamps[0] > asset_timestamps[-1]:
-         return Err(ValueError("Alignment Failed: Asset timestamps are not chronologically sorted (endpoints inverted)."))
+        return Err(
+            ValueError("Alignment Failed: Asset timestamps are not chronologically sorted (endpoints inverted).")
+        )
 
     try:
         # Strict Casting for C-Level Numba compatibility

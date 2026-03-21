@@ -48,13 +48,15 @@ no_implicit_optional = true
 warn_unreachable = true
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
+exclude = [".git", "__pycache__", "build", "dist"]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "N", "B", "C4", "ARG", "PGH"]
-ignore = []
+ignore = ["E501"]
 fixable = ["ALL"]
 unfixable = []
-exclude = [".git", "__pycache__", "build", "dist"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -64,5 +66,6 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 markers = [
-    "stress: Mark a test as a stress test (handles large datasets)"
+    "stress: Mark a test as a stress test (handles large datasets)",
+    "performance: marks tests as heavy performance/stress tests (deselect with '-m \"not performance\"')"
 ]

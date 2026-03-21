@@ -15,50 +15,33 @@ def compute_pairs_zscore(
     hedge_ratio_beta: float,
     z_score_rolling_window: int,
 ) -> Result[DataFrame, ValueError]:
-    """
-    Computes the Z-Score of the log spread between two cointegrated assets.
-    """
     if len(aligned_data) == 0:
         return Err(ValueError("Empty DataFrame provided."))
-
     if target_column not in aligned_data.columns:
-        return Err(ValueError(f"Missing required column for target asset: {target_column}"))
-
+        return Err(ValueError(f"Missing: {target_column}"))
     if anchor_column not in aligned_data.columns:
-        return Err(ValueError(f"Missing required column for anchor asset: {anchor_column}"))
-
+        return Err(ValueError(f"Missing: {anchor_column}"))
     if z_score_rolling_window < 2:
-        return Err(ValueError(f"Z-Score rolling window must be at least 2, got {z_score_rolling_window}"))
+        return Err(ValueError("Window must be >= 2"))
 
     try:
-        expr_log_target = pl.col(target_column).log()
-        expr_log_anchor = pl.col(anchor_column).log()
-        expr_log_spread = expr_log_target - (hedge_ratio_beta * expr_log_anchor)
+        expr_spread = pl.col(target_column).log() - (hedge_ratio_beta * pl.col(anchor_column).log())
+        data_with_spread = aligned_data.with_columns(expr_spread.alias("spread"))
 
-        data_with_spread = aligned_data.with_columns(
-            expr_log_spread.alias("log_spread")
+        expr_mean = pl.col("spread").rolling_mean(window_size=z_score_rolling_window)
+        expr_std = pl.col("spread").rolling_std(window_size=z_score_rolling_window)
+        data_with_stats = data_with_spread.with_columns([expr_mean.alias("spread_mean"), expr_std.alias("spread_std")])
+
+        expr_z_score = (
+            pl.when(pl.col("spread_std") < 1e-8)
+            .then(0.0)
+            .otherwise((pl.col("spread") - pl.col("spread_mean")) / pl.col("spread_std"))
+            .fill_nan(0.0)
         )
 
-        expr_mean = pl.col("log_spread").rolling_mean(window_size=z_score_rolling_window)
-        expr_std = pl.col("log_spread").rolling_std(window_size=z_score_rolling_window)
-
-        data_with_stats = data_with_spread.with_columns([
-            expr_mean.alias("spread_mean"),
-            expr_std.alias("spread_std")
-        ])
-
-        expr_z_score = pl.when(pl.col("spread_std") <= 1e-8).then(0.0).otherwise(
-            (pl.col("log_spread") - pl.col("spread_mean")) / pl.col("spread_std")
-        ).fill_nan(0.0)
-
-        data_final = data_with_stats.with_columns(
-            expr_z_score.alias("z_score")
-        )
-
-        return Ok(data_final)
-
-    except Exception as computation_error:
-        return Err(ValueError(f"Pairs Z-Score computation failed: {computation_error}"))
+        return Ok(data_with_stats.with_columns(expr_z_score.alias("z_score")))
+    except Exception as e:
+        return Err(ValueError(f"Pairs Z-Score failed: {e}"))
 
 
 def compute_basket_zscore(
@@ -67,83 +50,52 @@ def compute_basket_zscore(
     basket_columns: list[str],
     z_score_rolling_window: int,
 ) -> Result[DataFrame, ValueError]:
-    """
-    Computes the Z-Score of a Target Asset against a Synthetic PCA Basket.
-    """
     if len(aligned_data) == 0:
-        return Err(ValueError("Empty DataFrame provided."))
-
-    if target_column not in aligned_data.columns:
-        return Err(ValueError(f"Missing required target column: {target_column}"))
-
-    for col in basket_columns:
-        if col not in aligned_data.columns:
-            return Err(ValueError(f"Missing required basket column: {col}"))
-
+        return Err(ValueError("Empty DataFrame."))
     if len(basket_columns) < 2:
-        return Err(ValueError("PCA Basket Engine requires at least 2 anchor assets."))
-
-    if z_score_rolling_window < 2:
-        return Err(ValueError(f"Z-Score rolling window must be at least 2, got {z_score_rolling_window}"))
+        return Err(ValueError("PCA needs >= 2 assets."))
 
     try:
         all_assets = [target_column] + basket_columns
-        returns_expressions = [
-            pl.col(asset).log().diff().alias(f"{asset}_ret") for asset in all_assets
-        ]
-        data_with_returns = aligned_data.with_columns(returns_expressions)
+        returns_expr = [pl.col(asset).log().diff().alias(f"{asset}_ret") for asset in all_assets]
+        data_with_returns = aligned_data.with_columns(returns_expr)
 
-        basket_return_columns = [f"{asset}_ret" for asset in basket_columns]
-        matrix_for_pca = data_with_returns.select(basket_return_columns).drop_nulls().to_numpy()
+        basket_ret_cols = [f"{asset}_ret" for asset in basket_columns]
+        matrix_pca = data_with_returns.select(basket_ret_cols).drop_nulls().to_numpy()
 
-        pca_result = compute_pca_safe(matrix_for_pca)
+        pca_result = compute_pca_safe(matrix_pca)
         if pca_result.is_err():
-            return Err(ValueError(f"PCA computation kernel panic: {pca_result.unwrap_err()}"))
-
+            return Err(ValueError(f"PCA failed: {pca_result.unwrap_err()}"))
         _, eigenvectors = pca_result.unwrap()
 
-        pc1_raw_weights = eigenvectors[:, 0]
-        if np.sum(pc1_raw_weights) < 0:
-            pc1_raw_weights = -pc1_raw_weights
+        pc1_raw = eigenvectors[:, 0]
+        if np.sum(pc1_raw) < 0:
+            pc1_raw = -pc1_raw
+        pc1_weights = pc1_raw / np.sum(np.abs(pc1_raw))
 
-        pc1_weights = pc1_raw_weights / np.sum(np.abs(pc1_raw_weights))
+        synthetic_anchor = pl.sum_horizontal(
+            [pl.col(c) * float(w) for c, w in zip(basket_ret_cols, pc1_weights, strict=False)]
+        )
+        expr_spread = pl.col(f"{target_column}_ret") - synthetic_anchor
 
-        synthetic_anchor_expression = pl.sum_horizontal([
-            pl.col(col_name) * float(weight)
-            for col_name, weight in zip(basket_return_columns, pc1_weights)
-        ])
-
-        target_return_col = f"{target_column}_ret"
-        spread_expression = pl.col(target_return_col) - synthetic_anchor_expression
-
-        data_with_spread = data_with_returns.with_columns([
-            synthetic_anchor_expression.alias("synthetic_anchor_return"),
-            spread_expression.alias("basket_spread")
-        ])
-
-        expr_mean = pl.col("basket_spread").rolling_mean(window_size=z_score_rolling_window)
-        expr_std = pl.col("basket_spread").rolling_std(window_size=z_score_rolling_window)
-
-        data_with_stats = data_with_spread.with_columns([
-            expr_mean.alias("spread_mean"),
-            expr_std.alias("spread_std")
-        ])
-
-        expr_z_score = pl.when(pl.col("spread_std") <= 1e-8).then(0.0).otherwise(
-            (pl.col("basket_spread") - pl.col("spread_mean")) / pl.col("spread_std")
-        ).fill_nan(0.0)
-
-        data_final = data_with_stats.with_columns(
-            expr_z_score.alias("z_score")
+        data_with_spread = data_with_returns.with_columns(
+            [synthetic_anchor.alias("synthetic_anchor_return"), expr_spread.alias("spread")]
         )
 
-        return Ok(data_final)
+        expr_mean = pl.col("spread").rolling_mean(window_size=z_score_rolling_window)
+        expr_std = pl.col("spread").rolling_std(window_size=z_score_rolling_window)
+        data_with_stats = data_with_spread.with_columns([expr_mean.alias("spread_mean"), expr_std.alias("spread_std")])
 
-    except Exception as computation_error:
-        return Err(ValueError(f"Basket Z-Score computation failed: {computation_error}"))
+        expr_z_score = (
+            pl.when(pl.col("spread_std") < 1e-8)
+            .then(0.0)
+            .otherwise((pl.col("spread") - pl.col("spread_mean")) / pl.col("spread_std"))
+            .fill_nan(0.0)
+        )
+
+        return Ok(data_with_stats.with_columns(expr_z_score.alias("z_score")))
+    except Exception as e:
+        return Err(ValueError(f"Basket Z-Score failed: {e}"))
 
 
-__all__ = [
-    "compute_pairs_zscore",
-    "compute_basket_zscore",
-]
+__all__ = ["compute_pairs_zscore", "compute_basket_zscore"]

@@ -17,6 +17,7 @@ from dacos.utils import Err, Ok, Result
 # tanpa overhead Python atau BLAS yang berlebihan untuk matriks kecil.
 # ============================================================================
 
+
 @njit(cache=True, fastmath=True)
 def _kernel_mat_mul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Standard Matrix Multiplication."""
@@ -97,9 +98,11 @@ def _kernel_i_minus_kh_p(k: np.ndarray, h: np.ndarray, p: np.ndarray) -> np.ndar
     i_minus_kh = identity - kh
     return np.dot(i_minus_kh, p)
 
+
 # ============================================================================
 # ⚙️ LEVEL 1.5: PCA HARDWARE KERNELS (BASKET TRADING)
 # ============================================================================
+
 
 @njit(cache=True, fastmath=True)
 def _kernel_covariance_centered(x: np.ndarray) -> np.ndarray:
@@ -148,6 +151,7 @@ def _kernel_pca_components(cov_matrix: np.ndarray) -> tuple[np.ndarray, np.ndarr
 # Digunakan jika orca butuh validasi dimensi sebelum loop berat dimulai.
 # ============================================================================
 
+
 def invert_matrix_safe(matrix: np.ndarray) -> Result[np.ndarray, ValueError]:
     """
     Safe wrapper for matrix inversion. Will route to hyper-optimized 2x2 if applicable.
@@ -167,11 +171,12 @@ def invert_matrix_safe(matrix: np.ndarray) -> Result[np.ndarray, ValueError]:
     except Exception as e:
         return Err(ValueError(f"Matrix inversion failed (Singular matrix?): {e}"))
 
+
 def compute_pca_safe(data_matrix: np.ndarray) -> Result[tuple[np.ndarray, np.ndarray], ValueError]:
     """
     Safe wrapper for computing Principal Component Analysis (PCA).
     Validates dimensions, mean-centers the data, and routes to Numba kernels.
-    
+
     Args:
         data_matrix: 2D Numpy array of shape (n_samples, n_features) representing aligned asset returns/prices.
 
@@ -209,6 +214,7 @@ def compute_pca_safe(data_matrix: np.ndarray) -> Result[tuple[np.ndarray, np.nda
 
     except Exception as computation_error:
         return Err(ValueError(f"PCA computation kernel panic: {computation_error}"))
+
 
 __all__ = [
     "_kernel_pca_components",

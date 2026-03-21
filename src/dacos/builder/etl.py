@@ -73,9 +73,7 @@ def transform_to_silver_format(raw_data: LazyFrame) -> Result[LazyFrame, Excepti
         Ok(LazyFrame) containing the transformation plan, or Err(Exception) on failure.
     """
     try:
-        valid_price_volume = raw_data.filter(
-            pl.col("close").is_not_null() & (pl.col("volume") > 0.0)
-        )
+        valid_price_volume = raw_data.filter(pl.col("close").is_not_null() & (pl.col("volume") > 0.0))
 
         timestamp_casted = valid_price_volume.with_columns(
             pl.col("timestamp").cast(pl.Datetime("ms")).alias("timestamp")

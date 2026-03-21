@@ -16,7 +16,7 @@ RAW_SCHEMA = {
     "symbol": pl.String,
     "interval": pl.String,
     "year": pl.Int64,
-    "month": pl.String
+    "month": pl.String,
 }
 """
 Skema untuk data mentah di raw lake.
@@ -38,7 +38,7 @@ SILVER_SCHEMA = {
     "high": pl.Float64,
     "low": pl.Float64,
     "close": pl.Float64,
-    "volume": pl.Float64
+    "volume": pl.Float64,
 }
 """
 Skema untuk data silver (skinny table) setelah proses ETL.
@@ -61,18 +61,14 @@ BASE_SIGNAL_SCHEMA = {
 }
 
 # 3. STRATEGY-SPECIFIC SCHEMAS (Ekstensi untuk Metadata)
-STAT_ARB_SIGNAL_SCHEMA = {
-    **BASE_SIGNAL_SCHEMA,
-    "z_score": pl.Float64,
-    "spread": pl.Float64
-}
+STAT_ARB_SIGNAL_SCHEMA = {**BASE_SIGNAL_SCHEMA, "z_score": pl.Float64, "spread": pl.Float64}
 
-TSM_SIGNAL_SCHEMA = {
-    **BASE_SIGNAL_SCHEMA,
-    "atr": pl.Float64
-}
+TSM_SIGNAL_SCHEMA = {**BASE_SIGNAL_SCHEMA, "atr": pl.Float64}
 
 __all__ = [
-    "RAW_SCHEMA", "SILVER_SCHEMA",
-    "BASE_SIGNAL_SCHEMA", "STAT_ARB_SIGNAL_SCHEMA", "TSM_SIGNAL_SCHEMA"
+    "RAW_SCHEMA",
+    "SILVER_SCHEMA",
+    "BASE_SIGNAL_SCHEMA",
+    "STAT_ARB_SIGNAL_SCHEMA",
+    "TSM_SIGNAL_SCHEMA",
 ]

@@ -62,7 +62,12 @@ def _kernel_donchian_channels(high: np.ndarray, low: np.ndarray, window: int) ->
 
 @njit(cache=True, fastmath=True)
 def _kernel_garman_klass(
-    open_p: np.ndarray, high: np.ndarray, low: np.ndarray, close: np.ndarray, window: int, ann_factor: float
+    open_p: np.ndarray,
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    window: int,
+    ann_factor: float,
 ) -> np.ndarray:
     n = open_p.shape[0]
     gk_vol = np.empty(n, dtype=np.float64)
@@ -87,7 +92,12 @@ def _kernel_garman_klass(
 
 @njit(cache=True, fastmath=True)
 def _kernel_yang_zhang(
-    open_p: np.ndarray, high: np.ndarray, low: np.ndarray, close: np.ndarray, window: int, ann_factor: float
+    open_p: np.ndarray,
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    window: int,
+    ann_factor: float,
 ) -> np.ndarray:
     n = open_p.shape[0]
     yz_vol = np.empty(n, dtype=np.float64)
@@ -129,8 +139,8 @@ def _kernel_yang_zhang(
 
             var_rs += rs[i - j]
 
-        var_oc /= (window - 1.0)
-        var_co /= (window - 1.0)
+        var_oc /= window - 1.0
+        var_co /= window - 1.0
         var_rs /= float(window)
 
         variance = var_oc + k * var_co + (1.0 - k) * var_rs
@@ -191,7 +201,12 @@ def compute_donchian_channels_safe(
 
 
 def compute_garman_klass_safe(
-    open_p: np.ndarray, high: np.ndarray, low: np.ndarray, close: np.ndarray, window: int = 20, ann_factor: float = 365.0
+    open_p: np.ndarray,
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    window: int = 20,
+    ann_factor: float = 365.0,
 ) -> Result[np.ndarray, ValueError]:
     """
     Args:
@@ -228,7 +243,12 @@ def compute_garman_klass_safe(
 
 
 def compute_yang_zhang_safe(
-    open_p: np.ndarray, high: np.ndarray, low: np.ndarray, close: np.ndarray, window: int = 20, ann_factor: float = 365.0
+    open_p: np.ndarray,
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    window: int = 20,
+    ann_factor: float = 365.0,
 ) -> Result[np.ndarray, ValueError]:
     """
     Args:

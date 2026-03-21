@@ -11,6 +11,7 @@ from dacos.utils import Err, Ok, Result
 # ⚙️ LEVEL 1: HARDWARE KERNELS (C-LEVEL EXECUTION via NUMBA)
 # ============================================================================
 
+
 @njit(cache=True, fastmath=True)
 def _kernel_ou_half_life(spread_array: np.ndarray) -> float:
     """
@@ -112,6 +113,7 @@ def _kernel_hurst_exponent(spread_array: np.ndarray, max_lag: int) -> float:
 # 🛡️ LEVEL 2: SAFE MONADIC WRAPPERS (PYTHON RUNTIME PROTECTOR)
 # ============================================================================
 
+
 def compute_adf_test_safe(spread_series: np.ndarray) -> Result[dict[str, float], ValueError]:
     """
     Performs Augmented Dickey-Fuller (ADF) test using statsmodels.
@@ -126,7 +128,9 @@ def compute_adf_test_safe(spread_series: np.ndarray) -> Result[dict[str, float],
         return Err(ValueError(f"ADF test requires 1D array, got {spread_series.ndim}D."))
 
     if spread_series.shape[0] < 20:
-        return Err(ValueError(f"Insufficient data for ADF test. Got {spread_series.shape[0]} samples, minimum 20 required."))
+        return Err(
+            ValueError(f"Insufficient data for ADF test. Got {spread_series.shape[0]} samples, minimum 20 required.")
+        )
 
     try:
         adf_result = adfuller(spread_series, maxlag=1, autolag=None)
@@ -146,10 +150,10 @@ def compute_adf_test_safe(spread_series: np.ndarray) -> Result[dict[str, float],
 def compute_half_life_safe(spread_series: np.ndarray) -> Result[float, ValueError]:
     """
     Computes the Ornstein-Uhlenbeck mean-reversion half-life.
-    
+
     Args:
         spread_series: 1D Numpy array of the spread.
-        
+
     Returns:
         Ok(half_life) in ticks/periods, or Err(ValueError) if divergent/invalid.
     """
@@ -177,11 +181,11 @@ def compute_hurst_exponent_safe(spread_series: np.ndarray, max_lag: int = 20) ->
     H < 0.5: Mean Reverting
     H = 0.5: Geometric Brownian Motion (Random Walk)
     H > 0.5: Trending / Momentum
-    
+
     Args:
         spread_series: 1D Numpy array of the spread.
         max_lag: Maximum lag window for variance testing.
-        
+
     Returns:
         Ok(hurst_exponent), or Err(ValueError).
     """

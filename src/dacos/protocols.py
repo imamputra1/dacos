@@ -68,6 +68,7 @@ type SignalFunc = Callable[[LazyFrame], LazyFrame]
 # PROTOCOLS (INTERFACES): Kontrak untuk komponen dacos
 # ====================================================================
 
+
 @runtime_checkable
 class DataTransformer(Protocol):
     """Contract for components that perform data transformations."""
@@ -133,6 +134,7 @@ class StatisticalTestProtocol(Protocol):
 # ====================================================================
 # PROTOCOLS UNTUK STRATEGI LANJUTAN (Basket Trading, Momentum)
 # ====================================================================
+
 
 @runtime_checkable
 class BasketEngine(Protocol):

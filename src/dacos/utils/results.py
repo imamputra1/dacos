@@ -1,3 +1,4 @@
+# ruff: noqa: ARG002
 """
 Industrial-grade error handling for dacos trading system.
 Implements Ok and Err monads with comprehensive operations.
@@ -24,17 +25,19 @@ from typing import (
 
 # ====================== TYPE VARIABLES ======================
 
-T = TypeVar("T")       # Success type
-E = TypeVar("E")       # Error type (must be Exception or str)
-U = TypeVar("U")       # Return type for transformations
-F = TypeVar("F")       # New error type for error transformations
-P = ParamSpec("P")     # Function parameters
+T = TypeVar("T")  # Success type
+E = TypeVar("E")  # Error type (must be Exception or str)
+U = TypeVar("U")  # Return type for transformations
+F = TypeVar("F")  # New error type for error transformations
+P = ParamSpec("P")  # Function parameters
 
 # ====================== ALGEBRAIC RESULT TYPES ======================
+
 
 @dataclass(frozen=True, slots=True)
 class Ok(Generic[T]):
     """Success container - immutable monadic value."""
+
     value: T
 
     # ========== MONADIC CORE OPERATIONS ==========
@@ -111,6 +114,7 @@ class Ok(Generic[T]):
 @dataclass(frozen=True, slots=True)
 class Err(Generic[E]):
     """Error container - immutable monadic value."""
+
     error: E
 
     # ========== MONADIC CORE OPERATIONS ==========
@@ -205,8 +209,10 @@ def match_result(
 
 # ====================== DECORATORS FOR EXCEPTION HANDLING ======================
 
+
 def safe(func: Callable[P, T]) -> Callable[P, Result[T, Exception]]:
     """Wrap synchronous function to return Result monad."""
+
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T, Exception]:
         try:
@@ -214,13 +220,13 @@ def safe(func: Callable[P, T]) -> Callable[P, Result[T, Exception]]:
         except Exception as e:
             logging.debug(f"Function {func.__name__} failed: {e}")
             return Err(e)
+
     return wrapper
 
 
-def safe_async(
-    func: Callable[P, Awaitable[T]]
-) -> Callable[P, Awaitable[Result[T, Exception]]]:
+def safe_async(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[Result[T, Exception]]]:
     """Wrap asynchronous function to return Result monad."""
+
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T, Exception]:
         try:
@@ -229,10 +235,12 @@ def safe_async(
         except Exception as e:
             logging.debug(f"Async function {func.__name__} failed: {e}")
             return Err(e)
+
     return wrapper
 
 
 # ====================== MONADIC COMPOSITION UTILITIES ======================
+
 
 class ResultBuilder(Generic[E]):
     """Monadic builder for chaining Result operations."""
@@ -283,6 +291,7 @@ class ResultBuilder(Generic[E]):
 
 # ====================== ERROR RECOVERY PATTERNS ======================
 
+
 class RetryConfig:
     """Configuration for retry operations."""
 
@@ -326,7 +335,9 @@ def with_retry(
             # After exhausting retries, last_error is guaranteed to be set
             assert last_error is not None
             return Err(last_error)
+
         return wrapper
+
     return decorator
 
 
@@ -355,14 +366,17 @@ async def with_retry_async(
                 await asyncio.sleep(delay)
         assert last_error is not None
         return Err(last_error)
+
     return wrapper
 
 
 # ====================== OPTION TYPE (FOR COMPLETENESS) ======================
 
+
 @dataclass(frozen=True, slots=True)
 class Some(Generic[T]):
     """Some value container (Rust's Some)."""
+
     value: T
 
     def is_some(self) -> bool:
@@ -413,6 +427,7 @@ NoneType = _None()
 
 # ====================== ADVANCED MONADIC OPERATIONS ======================
 
+
 def try_all(*operations: Callable[[], Result[T, E]]) -> Result[list[T], list[E]]:
     """Try all operations, collect all results/errors."""
     results = []
@@ -449,6 +464,7 @@ def fallback(
 
 # ====================== CONTEXT MANAGER SUPPORT ======================
 
+
 @contextmanager
 def result_context() -> Any:
     """Context manager for Result operations."""
@@ -472,6 +488,7 @@ class ResultContext:
     @staticmethod
     def wrap(func: Callable[P, T]) -> Callable[P, Result[T, Exception]]:
         """Wrap function in context manager."""
+
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T, Exception]:
             with ResultContext():
@@ -479,10 +496,12 @@ class ResultContext:
                     return Ok(func(*args, **kwargs))
                 except Exception as e:
                     return Err(e)
+
         return wrapper
 
 
 # ====================== PERFORMANCE MONITORING ======================
+
 
 class MonadMetrics:
     """Metrics collection for monadic operations."""
@@ -507,6 +526,7 @@ class MonadMetrics:
 
 
 # ====================== TYPE GUARDS & VALIDATORS ======================
+
 
 def is_ok(result: Result[Any, Any]) -> bool:
     return isinstance(result, Ok)

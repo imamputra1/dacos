@@ -19,7 +19,7 @@ def compute_tsm_indicators(
     """
     Computes Time Series Momentum indicators (ATR and Donchian Channels).
     Supports Vectorized Research (Polars) and Live Tick-by-Tick buffers (Dict of Numpy Arrays).
-    
+
     Args:
         data: Polars DataFrame or Dictionary of Numpy arrays containing historical window.
         high_col: Name of the high price column/key.
@@ -64,11 +64,13 @@ def compute_tsm_indicators(
             upper_array, lower_array = dc_result.unwrap()
 
             # 3. Re-attachment & NaN Propagation Control (Schema Preservation)
-            df_final = data.with_columns([
-                pl.Series("atr", atr_array).fill_nan(0.0),
-                pl.Series("upper_band", upper_array),
-                pl.Series("lower_band", lower_array)
-            ])
+            df_final = data.with_columns(
+                [
+                    pl.Series("atr", atr_array).fill_nan(0.0),
+                    pl.Series("upper_band", upper_array),
+                    pl.Series("lower_band", lower_array),
+                ]
+            )
 
             return Ok(df_final)
 
