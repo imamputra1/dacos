@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import polars as pl
+from numpy.testing import assert_allclose
+
 from dacos.config import TSMConfig
 from dacos.paradigms.tsm.tactics import apply_momentum_tactics_strict
-from numpy.testing import assert_allclose
 
 # ============================================================================
 # KUADRAN 1: THE DIRECTIONAL MATRIX (Akurasi Sinyal Breakout)

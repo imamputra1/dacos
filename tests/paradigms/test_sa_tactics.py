@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import polars as pl
+
 from dacos.config import StatArbConfig
 from dacos.paradigms.stat_arb.tactics import apply_mean_reversion_tactics_strict
 

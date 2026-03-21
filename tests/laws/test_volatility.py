@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+
 from dacos.laws import (
     compute_atr_safe,
     compute_donchian_channels_safe,

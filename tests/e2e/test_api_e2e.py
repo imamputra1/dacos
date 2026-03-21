@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import polars as pl
+from polars.testing import assert_frame_equal
+
 from dacos.api import (
     evaluate_stat_arb_live,
     evaluate_tsm_live,
@@ -22,7 +24,6 @@ from dacos.api import (
     run_tsm_research,
 )
 from dacos.config import StatArbConfig, TSMConfig
-from polars.testing import assert_frame_equal
 
 # ============================================================================
 # HELPER: MOCK DATA GENERATORS (The Fuel)

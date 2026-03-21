@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+
 from dacos.laws import (
     _kernel_hurst_exponent,
     _kernel_ou_half_life,

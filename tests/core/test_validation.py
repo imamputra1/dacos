@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 import pytest
+
 from dacos.core.validation import (
     _kernel_detect_flatline,
     _kernel_detect_spikes,

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 import polars as pl
-from dacos.paradigms import compute_basket_zscore, compute_pairs_zscore
 from numpy.testing import assert_allclose
+
+from dacos.paradigms import compute_basket_zscore, compute_pairs_zscore
 
 # ============================================================================
 # KUADRAN 1: THE PHYSICS VALIDATION (Akurasi Matematis)

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from numpy.testing import assert_array_equal
+
 from dacos.core.alignment import (
     _kernel_align_and_forward_fill_strict,
     synchronize_asset_to_master_grid_strict,
 )
-from numpy.testing import assert_array_equal
 
 
 @pytest.fixture

@@ -4,6 +4,8 @@ import time
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
+
 from dacos.core import (
     _kernel_a_b_inv,
     _kernel_a_b_t,
@@ -17,7 +19,6 @@ from dacos.core import (
     compute_pca_safe,
     invert_matrix_safe,
 )
-from numpy.testing import assert_allclose
 
 # ============================================================================
 # FIXTURES
