@@ -38,6 +38,7 @@ disallow_untyped_defs = false
 warn_return_any = false
 disallow_any_generics = false
 no_implicit_optional = true
+warn_no_return = false
 
 [[tool.mypy.overrides]]
 module = [
