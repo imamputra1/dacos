@@ -22,5 +22,3 @@ dist/
 # OS
 .DS_Store
 
-# FOLDER
-tests/
