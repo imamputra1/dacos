@@ -27,7 +27,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Check Code Formatting (Ruff)
-        run: uv run ruff format --Check .
+        run: uv run ruff format --check .
 
       - name: Check Code Quality/Linting (Ruff)
         run: uv run ruff check .
