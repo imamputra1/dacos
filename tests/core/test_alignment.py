@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
-
 from dacos.core.alignment import (
     _kernel_align_and_forward_fill_strict,
     synchronize_asset_to_master_grid_strict,
 )
+from numpy.testing import assert_array_equal
 
 
 @pytest.fixture
@@ -125,15 +124,11 @@ def test_wrapper_returns_err_on_negative_tolerance(
     assert "cannot be negative" in str(result.unwrap_err())
 
 
-def test_wrapper_returns_err_on_unsorted_timestamps(
-    master_grid: np.ndarray, target_prices: np.ndarray
-) -> None:
+def test_wrapper_returns_err_on_unsorted_timestamps(master_grid: np.ndarray, target_prices: np.ndarray) -> None:
     """Tests guard clause for non-chronological target timestamps."""
     unsorted_target_timestamps = np.array([3000, 1000, 2000], dtype=np.int64)
 
-    result = synchronize_asset_to_master_grid_strict(
-        master_grid, unsorted_target_timestamps, target_prices
-    )
+    result = synchronize_asset_to_master_grid_strict(master_grid, unsorted_target_timestamps, target_prices)
 
     assert result.is_err()
     assert "not chronologically sorted" in str(result.unwrap_err())
@@ -146,9 +141,7 @@ def test_wrapper_returns_err_on_complete_overlap_failure() -> None:
     target_price = np.array([1.0, 2.0], dtype=np.float64)
 
     # Tolerance is 1000ms. Difference between master and target is ~9800ms. All will be NaN.
-    result = synchronize_asset_to_master_grid_strict(
-        master, target_time, target_price, max_stale_data_ms=1000
-    )
+    result = synchronize_asset_to_master_grid_strict(master, target_time, target_price, max_stale_data_ms=1000)
 
     assert result.is_err()
     assert "100% of aligned data resulted in NaN" in str(result.unwrap_err())

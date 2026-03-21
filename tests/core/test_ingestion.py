@@ -4,7 +4,6 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-
 from dacos.contracts import SILVER_SCHEMA
 from dacos.core.ingestion import ingest_silver_data, validate_silver_schema
 

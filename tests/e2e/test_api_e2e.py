@@ -15,8 +15,6 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import polars as pl
-from polars.testing import assert_frame_equal
-
 from dacos.api import (
     evaluate_stat_arb_live,
     evaluate_tsm_live,
@@ -24,10 +22,12 @@ from dacos.api import (
     run_tsm_research,
 )
 from dacos.config import StatArbConfig, TSMConfig
+from polars.testing import assert_frame_equal
 
 # ============================================================================
 # HELPER: MOCK DATA GENERATORS (The Fuel)
 # ============================================================================
+
 
 def generate_silver_tsm_data(n_rows: int = 100) -> pl.DataFrame:
     """Menghasilkan mock data Silver Lake dengan skema waktu presisi milidetik."""
@@ -39,14 +39,16 @@ def generate_silver_tsm_data(n_rows: int = 100) -> pl.DataFrame:
     lows = highs - np.random.rand(n_rows) * 5
     closes = lows + np.random.rand(n_rows) * 2
 
-    return pl.DataFrame({
-        "timestamp": timestamps,
-        "open": closes * 0.99,
-        "high": highs,
-        "low": lows,
-        "close": closes,
-        "volume": np.random.rand(n_rows) * 1000
-    }).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
+    return pl.DataFrame(
+        {
+            "timestamp": timestamps,
+            "open": closes * 0.99,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": np.random.rand(n_rows) * 1000,
+        }
+    ).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
 
 
 def generate_aligned_statarb_data(n_rows: int = 100) -> pl.DataFrame:
@@ -55,16 +57,19 @@ def generate_aligned_statarb_data(n_rows: int = 100) -> pl.DataFrame:
     base_time = datetime(2023, 1, 1)
     timestamps = [base_time + timedelta(minutes=i) for i in range(n_rows)]
 
-    return pl.DataFrame({
-        "timestamp": timestamps,
-        "target_coin": np.random.rand(n_rows) * 10 + 100,
-        "anchor_coin": np.random.rand(n_rows) * 5 + 50
-    }).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
+    return pl.DataFrame(
+        {
+            "timestamp": timestamps,
+            "target_coin": np.random.rand(n_rows) * 10 + 100,
+            "anchor_coin": np.random.rand(n_rows) * 5 + 50,
+        }
+    ).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
 
 
 # ============================================================================
 # 📦 KRITERIA 1: INTEGRITAS KONTRAK (The Black Box Schema)
 # ============================================================================
+
 
 def test_e2e_tsm_schema_integrity() -> None:
     """1.1 Zero-Leakage & Casting Validation untuk TSM."""
@@ -101,6 +106,7 @@ def test_e2e_statarb_schema_integrity() -> None:
 # 🔄 KRITERIA 2: DETERMINISME (Idempotency Metrics)
 # ============================================================================
 
+
 def test_e2e_idempotency_100_percent() -> None:
     """2.1 & 2.2 Replikasi identik dan State Isolation (Statelessness)."""
     df = generate_silver_tsm_data(200)
@@ -118,6 +124,7 @@ def test_e2e_idempotency_100_percent() -> None:
 # ============================================================================
 # 🛡️ KRITERIA 3: KETAHANAN MONADIK (The Exception Shield)
 # ============================================================================
+
 
 def test_e2e_exception_shield_corrupt_data() -> None:
     """3.1 Injeksi Data Cacat. API tidak boleh melempar Exception merah, wajib Err()."""
@@ -140,26 +147,30 @@ def test_e2e_exception_shield_empty_data() -> None:
 def test_e2e_flatline_chain_protection() -> None:
     """3.3 Proteksi pembagian nol berantai hingga ke output akhir."""
     # Data stagnan, volatilitas mati total
-    df = pl.DataFrame({
-        "timestamp": [datetime(2023, 1, 1)] * 50,
-        "open": [100.0] * 50,
-        "high": [100.0] * 50,
-        "low": [100.0] * 50,
-        "close": [100.0] * 50,
-        "volume": [0.0] * 50
-    }).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
+    df = pl.DataFrame(
+        {
+            "timestamp": [datetime(2023, 1, 1)] * 50,
+            "open": [100.0] * 50,
+            "high": [100.0] * 50,
+            "low": [100.0] * 50,
+            "close": [100.0] * 50,
+            "volume": [0.0] * 50,
+        }
+    ).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
 
     res = run_tsm_research(df, "FLAT-USDT").unwrap()
 
     # Engine harus selamat. Midline touch = EXIT. Sizing flatline = 0.0
     last_row = res.row(-1, named=True)
     assert last_row["strength"] == 0.0
-    assert last_row["action"] == "EXIT" # SURGERY: Diubah dari NEUTRAL ke EXIT
+    assert last_row["action"] == "EXIT"  # SURGERY: Diubah dari NEUTRAL ke EXIT
     assert last_row["position"] == 0
+
 
 # ============================================================================
 # 🪞 KRITERIA 4: SIMETRI DUAL-MODE (Research vs Live Parity)
 # ============================================================================
+
 
 def test_e2e_dual_mode_symmetry_tick_to_vector() -> None:
     """4.1 Membuktikan output Live identik dengan baris terakhir output Research."""
@@ -182,6 +193,7 @@ def test_e2e_dual_mode_symmetry_tick_to_vector() -> None:
     assert last_research_row["position"] == res_live["position"]
     # Perbandingan floating point toleransi ketat (1e-8) sekarang akan lulus!
     assert np.isclose(last_research_row["strength"], res_live["strength"], atol=1e-8)
+
 
 # ============================================================================
 # ⏱️ KRITERIA 5: LATENSI EKSEKUSI (Live Mode Benchmark)
@@ -206,7 +218,7 @@ def test_e2e_hft_latency_benchmark() -> None:
         end_time = time.perf_counter()
 
         assert res.is_ok()
-        latencies.append((end_time - start_time) * 1000) # Konversi ke milidetik
+        latencies.append((end_time - start_time) * 1000)  # Konversi ke milidetik
 
     avg_latency = sum(latencies) / iterations
     max_latency = max(latencies)

@@ -4,7 +4,6 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-
 from dacos.builder.etl import (
     execute_etl_pipeline,
     extract_raw_parquet,
@@ -154,8 +153,7 @@ def test_transform_to_silver_format_applies_correct_filters_and_schema(dummy_raw
 
 
 def test_write_silver_parquet_creates_file_successfully(
-    dummy_raw_dataframe: pl.DataFrame,
-    empty_silver_directory: Path
+    dummy_raw_dataframe: pl.DataFrame, empty_silver_directory: Path
 ) -> None:
     """
     Tests that write_silver_parquet materializes the LazyFrame to a Parquet file.
@@ -175,10 +173,7 @@ def test_write_silver_parquet_creates_file_successfully(
     assert written_df.height == 2
 
 
-def test_execute_etl_pipeline_succeeds_end_to_end(
-    raw_directory_with_data: Path,
-    empty_silver_directory: Path
-) -> None:
+def test_execute_etl_pipeline_succeeds_end_to_end(raw_directory_with_data: Path, empty_silver_directory: Path) -> None:
     """
     Tests the complete execution of the ETL pipeline producing a success message and valid file.
     """
@@ -192,8 +187,7 @@ def test_execute_etl_pipeline_succeeds_end_to_end(
 
 
 def test_execute_etl_pipeline_fails_at_validation_for_missing_source(
-    tmp_path: Path,
-    empty_silver_directory: Path
+    tmp_path: Path, empty_silver_directory: Path
 ) -> None:
     """
     Tests that execute_etl_pipeline short-circuits and returns Err if raw path is missing.

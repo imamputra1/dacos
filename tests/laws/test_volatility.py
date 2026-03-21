@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from dacos.laws import (
     compute_atr_safe,
     compute_donchian_channels_safe,
@@ -34,7 +33,7 @@ def test_compute_atr_safe_valid(ohlc_data: tuple[np.ndarray, np.ndarray, np.ndar
     assert result.is_ok()
     atr = result.unwrap()
     assert atr.shape == high.shape
-    assert np.isnan(atr[:window - 1]).all()
+    assert np.isnan(atr[: window - 1]).all()
     assert not np.isnan(atr[window:]).any()
     assert (atr[window:] > 0).all()
 
@@ -48,11 +47,11 @@ def test_compute_donchian_channels_safe_valid(ohlc_data: tuple[np.ndarray, np.nd
     upper, lower = result.unwrap()
     assert upper.shape == high.shape
     assert lower.shape == low.shape
-    assert np.isnan(upper[:window - 1]).all()
-    assert np.isnan(lower[:window - 1]).all()
-    assert not np.isnan(upper[window - 1:]).any()
-    assert not np.isnan(lower[window - 1:]).any()
-    assert (upper[window - 1:] >= lower[window - 1:]).all()
+    assert np.isnan(upper[: window - 1]).all()
+    assert np.isnan(lower[: window - 1]).all()
+    assert not np.isnan(upper[window - 1 :]).any()
+    assert not np.isnan(lower[window - 1 :]).any()
+    assert (upper[window - 1 :] >= lower[window - 1 :]).all()
 
 
 def test_compute_garman_klass_safe_valid(ohlc_data: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]) -> None:
@@ -63,9 +62,9 @@ def test_compute_garman_klass_safe_valid(ohlc_data: tuple[np.ndarray, np.ndarray
     assert result.is_ok()
     gk = result.unwrap()
     assert gk.shape == open_p.shape
-    assert np.isnan(gk[:window - 1]).all()
-    assert not np.isnan(gk[window - 1:]).any()
-    assert (gk[window - 1:] >= 0).all()
+    assert np.isnan(gk[: window - 1]).all()
+    assert not np.isnan(gk[window - 1 :]).any()
+    assert (gk[window - 1 :] >= 0).all()
 
 
 def test_compute_yang_zhang_safe_valid(ohlc_data: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]) -> None:

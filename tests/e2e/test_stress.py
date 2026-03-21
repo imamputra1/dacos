@@ -15,7 +15,6 @@ import tracemalloc
 import numpy as np
 import polars as pl
 import pytest
-
 from dacos.api import evaluate_tsm_live, run_tsm_research
 from dacos.config import TSMConfig
 from dacos.paradigms import compute_basket_zscore
@@ -23,6 +22,7 @@ from dacos.paradigms import compute_basket_zscore
 # ============================================================================
 # KUADRAN 1: THE MEMORY CRUNCH (10 JUTA BARIS)
 # ============================================================================
+
 
 # Menggunakan marker khusus agar tes berat ini bisa di-skip jika hanya ingin tes logika cepat
 @pytest.mark.performance
@@ -37,14 +37,16 @@ def test_stress_memory_crunch_10m_rows() -> None:
     np.random.seed(42)
     closes = np.random.rand(n_rows) * 100 + 1000
 
-    df_massive = pl.DataFrame({
-        "timestamp": np.arange(n_rows),  # Angka int lebih ringan di RAM untuk inisiasi
-        "open": closes * 0.99,
-        "high": closes + 5,
-        "low": closes - 5,
-        "close": closes,
-        "volume": np.ones(n_rows) * 100
-    }).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
+    df_massive = pl.DataFrame(
+        {
+            "timestamp": np.arange(n_rows),  # Angka int lebih ringan di RAM untuk inisiasi
+            "open": closes * 0.99,
+            "high": closes + 5,
+            "low": closes - 5,
+            "close": closes,
+            "volume": np.ones(n_rows) * 100,
+        }
+    ).with_columns(pl.col("timestamp").cast(pl.Datetime("ms")))
 
     config = TSMConfig(atr_window=14, donchian_window=20)
 
@@ -77,6 +79,7 @@ def test_stress_memory_crunch_10m_rows() -> None:
 # ============================================================================
 # KUADRAN 2: THE MULTI-ASSET BASKET CRUNCH (PCA STRESS)
 # ============================================================================
+
 
 @pytest.mark.performance
 def test_stress_pca_basket_50_coins() -> None:
@@ -118,6 +121,7 @@ def test_stress_pca_basket_50_coins() -> None:
 # KUADRAN 3: THE LIVE TICK BARRAGE (10.000 REQUEST/DETIK)
 # ============================================================================
 
+
 @pytest.mark.performance
 def test_stress_live_tick_barrage() -> None:
     """
@@ -131,7 +135,7 @@ def test_stress_live_tick_barrage() -> None:
         "high": np.random.rand(30) + 105,
         "low": np.random.rand(30) + 95,
         "close": np.random.rand(30) + 102,
-        "volume": np.random.rand(30) * 1000
+        "volume": np.random.rand(30) * 1000,
     }
 
     config = TSMConfig()

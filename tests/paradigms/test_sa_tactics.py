@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 import polars as pl
-
 from dacos.config import StatArbConfig
 from dacos.paradigms.stat_arb.tactics import apply_mean_reversion_tactics_strict
 
 # ============================================================================
 # KUADRAN 1: THE CORE LOGIC (Akurasi Threshold)
 # ============================================================================
+
 
 def test_long_entry_signal() -> None:
     """1.1: Z-Score < -Entry -> BUY"""
@@ -77,6 +77,7 @@ def test_neutral_zone_ignore() -> None:
 # KUADRAN 2: THE SPOT ARMOR (Proteksi Short-Selling)
 # ============================================================================
 
+
 def test_spot_market_blocks_short() -> None:
     """2.1: allow_short=False MUST override SELL to NEUTRAL."""
     config_spot = StatArbConfig(entry_z=2.0, exit_z=0.5, allow_short=False)
@@ -117,6 +118,7 @@ def test_futures_allows_short() -> None:
 # ============================================================================
 # KUADRAN 3: MODE 2 - LIVE TICK (Robustness)
 # ============================================================================
+
 
 def test_live_dict_schema_output() -> None:
     """3.1: Output schema must strictly match STAT_ARB_SIGNAL_SCHEMA."""
@@ -159,6 +161,7 @@ def test_live_dict_type_safety() -> None:
 # KUADRAN 4: MODE 1 - VECTORIZED (Polars Integrity)
 # ============================================================================
 
+
 def test_polars_empty_dataframe() -> None:
     """4.1: Empty dataframe must return Err."""
     df = pl.DataFrame()
@@ -178,11 +181,13 @@ def test_polars_schema_preservation() -> None:
     """4.3: Mass processing must preserve STAT_ARB_SIGNAL_SCHEMA exactly."""
     np.random.seed(42)
     n_rows = 10_000
-    df = pl.DataFrame({
-        "timestamp": np.arange(n_rows),
-        "z_score": np.random.randn(n_rows) * 3,
-        "spread": np.random.randn(n_rows) * 0.1
-    })
+    df = pl.DataFrame(
+        {
+            "timestamp": np.arange(n_rows),
+            "z_score": np.random.randn(n_rows) * 3,
+            "spread": np.random.randn(n_rows) * 0.1,
+        }
+    )
 
     res = apply_mean_reversion_tactics_strict(df, "BASKET_1")
     assert res.is_ok()

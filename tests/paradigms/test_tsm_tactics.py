@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import polars as pl
-from numpy.testing import assert_allclose
-
 from dacos.config import TSMConfig
 from dacos.paradigms.tsm.tactics import apply_momentum_tactics_strict
+from numpy.testing import assert_allclose
 
 # ============================================================================
 # KUADRAN 1: THE DIRECTIONAL MATRIX (Akurasi Sinyal Breakout)
 # ============================================================================
+
 
 def test_bullish_breakout() -> None:
     """1.1: Close > Upper Band triggers BUY."""
@@ -30,13 +30,17 @@ def test_inside_channel_neutral_and_exit() -> None:
     """1.3: Inside channel logic. Midline touch triggers EXIT, otherwise NEUTRAL."""
     config = TSMConfig()
     # Skenario 1: Sentuh persis garis tengah (Midline) -> EXIT
-    df_exit = pl.DataFrame({"timestamp": [1], "close": [90.0], "upper_band": [100.0], "lower_band": [80.0], "atr": [2.0]})
+    df_exit = pl.DataFrame(
+        {"timestamp": [1], "close": [90.0], "upper_band": [100.0], "lower_band": [80.0], "atr": [2.0]}
+    )
     res_exit = apply_momentum_tactics_strict(df_exit, "BTC", config=config).unwrap()
     assert res_exit["action"][0] == "EXIT"
     assert res_exit["position"][0] == 0
 
     # Skenario 2: Melayang di dalam channel (Area Abu-abu) -> NEUTRAL
-    df_neutral = pl.DataFrame({"timestamp": [1], "close": [95.0], "upper_band": [100.0], "lower_band": [80.0], "atr": [2.0]})
+    df_neutral = pl.DataFrame(
+        {"timestamp": [1], "close": [95.0], "upper_band": [100.0], "lower_band": [80.0], "atr": [2.0]}
+    )
     res_neutral = apply_momentum_tactics_strict(df_neutral, "BTC", config=config).unwrap()
     assert res_neutral["action"][0] == "NEUTRAL"
     assert res_neutral["position"][0] == 0
@@ -53,6 +57,7 @@ def test_exact_touch_no_breakout() -> None:
 # ============================================================================
 # KUADRAN 2: THE RISK PARITY ENGINE (Akurasi Sizing & Proteksi)
 # ============================================================================
+
 
 def test_normal_volatility_sizing() -> None:
     """2.1: Normal volatility (2%). Strength should be exactly 0.5."""
@@ -78,6 +83,7 @@ def test_absolute_flatline_sizing() -> None:
 # ============================================================================
 # KUADRAN 3: THE SPOT ARMOR (Proteksi Tipe Bursa)
 # ============================================================================
+
 
 def test_spot_blocks_bearish_breakout() -> None:
     """3.1: allow_short=False MUST override bearish breakouts to NEUTRAL."""
@@ -107,6 +113,7 @@ def test_futures_allows_both_sides() -> None:
 # KUADRAN 4: DUAL-MODE & SCHEMA CONSERVATION
 # ============================================================================
 
+
 def test_dual_mode_symmetry_tsm() -> None:
     """4.1: Proves Polars mode and Dict mode output perfectly identical signals and sizing."""
     config = TSMConfig(target_risk_pct=0.02)
@@ -124,8 +131,14 @@ def test_dual_mode_symmetry_tsm() -> None:
 def test_schema_output_trimming() -> None:
     """4.2: Output must be rigorously trimmed down to TSM_SIGNAL_SCHEMA."""
     data = {
-        "timestamp": [1], "close": [105.0], "upper_band": [100.0], "lower_band": [80.0], "atr": [2.0],
-        "noise_volume": [5000], "noise_vwap": [102.0], "noise_ma": [101.0]
+        "timestamp": [1],
+        "close": [105.0],
+        "upper_band": [100.0],
+        "lower_band": [80.0],
+        "atr": [2.0],
+        "noise_volume": [5000],
+        "noise_vwap": [102.0],
+        "noise_ma": [101.0],
     }
     df = pl.DataFrame(data)
     res = apply_momentum_tactics_strict(df, "SOL", config=TSMConfig()).unwrap()
@@ -135,7 +148,7 @@ def test_schema_output_trimming() -> None:
     assert set(res.columns) == expected_columns
     assert "noise_volume" not in res.columns
     assert "close" not in res.columns
-    assert res["position"].dtype == pl.Int8 # Tipe wajib dari Orca
+    assert res["position"].dtype == pl.Int8  # Tipe wajib dari Orca
 
 
 def test_missing_required_keys() -> None:

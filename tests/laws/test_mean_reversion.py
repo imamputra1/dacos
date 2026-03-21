@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from dacos.laws import (
     _kernel_hurst_exponent,
     _kernel_ou_half_life,
@@ -22,6 +21,7 @@ from dacos.laws import (
 # FIXTURES (SYNTHETIC MARKET DATA GENERATORS)
 # ============================================================================
 
+
 @pytest.fixture
 def mean_reverting_spread() -> np.ndarray:
     """
@@ -33,7 +33,7 @@ def mean_reverting_spread() -> np.ndarray:
     y = np.zeros(n_samples)
     theta = 0.5  # Mean reversion speed
     for t in range(1, n_samples):
-        y[t] = theta * y[t-1] + np.random.normal(0, 1)
+        y[t] = theta * y[t - 1] + np.random.normal(0, 1)
     return y
 
 
@@ -82,6 +82,7 @@ def heteroskedastic_spread() -> np.ndarray:
 # KERNEL TESTS: MATHEMATICAL CORRECTNESS
 # ============================================================================
 
+
 def test_kernel_ou_half_life_returns_valid_float_for_mean_reverting(mean_reverting_spread: np.ndarray) -> None:
     """Tests that a mean-reverting spread yields a positive, finite half-life."""
     half_life = _kernel_ou_half_life(mean_reverting_spread)
@@ -126,9 +127,9 @@ def test_kernel_hurst_exponent_classifies_regimes_correctly(
 # SAFE WRAPPER TESTS: GUARD CLAUSES & ERROR HANDLING
 # ============================================================================
 
+
 def test_compute_adf_test_safe_detects_stationarity(
-    mean_reverting_spread: np.ndarray,
-    random_walk_spread: np.ndarray
+    mean_reverting_spread: np.ndarray, random_walk_spread: np.ndarray
 ) -> None:
     """Tests ADF Test correctly identifies stationary vs non-stationary series."""
     # Mean Reverting (Stationary -> p-value < 0.05)

@@ -4,8 +4,6 @@ import time
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
-
 from dacos.core import (
     _kernel_a_b_inv,
     _kernel_a_b_t,
@@ -19,10 +17,12 @@ from dacos.core import (
     compute_pca_safe,
     invert_matrix_safe,
 )
+from numpy.testing import assert_allclose
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def mat_2x2() -> np.ndarray:
@@ -46,6 +46,7 @@ def pca_data() -> np.ndarray:
 # ============================================================================
 # KERNEL TESTS: STANDARD LINEAR ALGEBRA
 # ============================================================================
+
 
 def test_kernel_mat_mul(mat_2x2: np.ndarray) -> None:
     b = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
@@ -103,6 +104,7 @@ def test_kernel_i_minus_kh_p(mat_2x2: np.ndarray) -> None:
 # KERNEL TESTS: PCA & BASKET TRADING
 # ============================================================================
 
+
 def test_kernel_covariance_centered(pca_data: np.ndarray) -> None:
     """Tests Numba covariance matrix vs Numpy's exact implementation."""
     centered = pca_data - np.mean(pca_data, axis=0)
@@ -133,6 +135,7 @@ def test_kernel_pca_components(pca_data: np.ndarray) -> None:
 # ============================================================================
 # SAFETY WRAPPER TESTS
 # ============================================================================
+
 
 def test_invert_matrix_safe_returns_ok_for_2x2(mat_2x2: np.ndarray) -> None:
     result = invert_matrix_safe(mat_2x2)
@@ -183,6 +186,7 @@ def test_compute_pca_safe_returns_err_for_invalid_dimensions() -> None:
 # 🏎️ PERFORMANCE / SPEED TESTS
 # ============================================================================
 
+
 def test_speed_numba_vs_numpy_inv_2x2(mat_2x2: np.ndarray) -> None:
     """Benchmarks the Numba 2x2 inversion kernel against np.linalg.inv."""
     iterations = 100_000
@@ -213,7 +217,7 @@ def test_speed_numba_vs_numpy_pca(pca_data: np.ndarray) -> None:
     """
     iterations = 10_000
 
-    _ = compute_pca_safe(pca_data) # Warm-up JIT
+    _ = compute_pca_safe(pca_data)  # Warm-up JIT
 
     # TIME NUMPY PIPELINE
     start_np = time.perf_counter()
@@ -236,7 +240,7 @@ def test_speed_numba_vs_numpy_pca(pca_data: np.ndarray) -> None:
     print(f"Numpy `np.cov` + `np.linalg.eigh`: {time_np:.5f} seconds")
     print(f"Numba `compute_pca_safe`: {time_nb:.5f} seconds")
 
-    speedup = time_np / time_nb if time_nb > 0 else float('inf')
+    speedup = time_np / time_nb if time_nb > 0 else float("inf")
     print(f"PCA Speedup Factor: {speedup:.2f}x faster")
 
     # Soft assertion: Numba should at least be competitive/faster, eliminating python loop overhead

@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 import pytest
-
 from dacos.core.validation import (
     _kernel_detect_flatline,
     _kernel_detect_spikes,
@@ -86,7 +85,9 @@ def test_validate_market_integrity_returns_ok_for_clean_data(valid_market_datafr
     assert result.unwrap().height == 5
 
 
-def test_validate_market_integrity_returns_err_when_price_column_is_missing(valid_market_dataframe: pl.DataFrame) -> None:
+def test_validate_market_integrity_returns_err_when_price_column_is_missing(
+    valid_market_dataframe: pl.DataFrame,
+) -> None:
     """Tests guard clause for missing price column."""
     bad_dataframe = valid_market_dataframe.rename({"close": "wrong_price_name"})
 
@@ -100,7 +101,9 @@ def test_validate_market_integrity_returns_err_when_price_column_is_missing(vali
     assert "Missing required column: close" in str(result.unwrap_err())
 
 
-def test_validate_market_integrity_returns_err_when_symbol_column_is_missing(valid_market_dataframe: pl.DataFrame) -> None:
+def test_validate_market_integrity_returns_err_when_symbol_column_is_missing(
+    valid_market_dataframe: pl.DataFrame,
+) -> None:
     """Tests guard clause for missing symbol column."""
     bad_dataframe = valid_market_dataframe.rename({"symbol": "ticker"})
 
