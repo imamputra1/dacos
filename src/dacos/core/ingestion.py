@@ -39,7 +39,7 @@ def validate_silver_schema(file_path: Path) -> Result[bool, TypeError]:
         actual_dtype = actual_schema[column_name]
         if actual_dtype != expected_dtype:
             return Err(
-                TypeError(f"Schema violation for '{column_name}': " f"Expected {expected_dtype}, got {actual_dtype}.")
+                TypeError(f"Schema violation for '{column_name}': Expected {expected_dtype}, got {actual_dtype}.")
             )
 
     return Ok(True)
