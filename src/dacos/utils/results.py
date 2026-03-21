@@ -499,6 +499,7 @@ class ResultContext:
         return wrapper
 
 
+# type: ignore[return-value]
 # type: ignore[return]
 
 # ====================== PERFORMANCE MONITORING ======================
