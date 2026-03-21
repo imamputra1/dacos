@@ -192,7 +192,7 @@ class Err[E]:
 Result = Ok[T] | Err[E]
 
 
-def match_result(
+def match_result[T, E, U](
     result: Result[T, E],
     on_ok: Callable[[T], U],
     on_err: Callable[[E], U],
@@ -443,7 +443,7 @@ def try_all[T, E](*operations: Callable[[], Result[T, E]]) -> Result[list[T], li
     return Ok(results)
 
 
-def fallback(
+def fallback[T, E](
     primary: Callable[[], Result[T, E]],
     *fallbacks: Callable[[], Result[T, E]],
 ) -> Result[T, list[E]]:
