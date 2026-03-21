@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ["main"]
 
-job:
+jobs:
   test-and-lint:
     name: Code Quality and Physics Tests
     runs-on: ubuntu-latest
