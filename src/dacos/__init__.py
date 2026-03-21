@@ -86,7 +86,6 @@ from .utils import (
 __all__ = [
     # Metadata
     "__version__",
-
     # Submodules
     "api",
     "builder",
@@ -96,13 +95,11 @@ __all__ = [
     "paradigms",
     "protocols",
     "utils",
-
     # Public API Endpoints
     "run_stat_arb_research",
     "run_tsm_research",
     "evaluate_stat_arb_live",
     "evaluate_tsm_live",
-
     # Builder & Core
     "execute_etl_pipeline",
     "ingest_silver_data",
@@ -111,7 +108,6 @@ __all__ = [
     "validate_silver_schema",
     "invert_matrix_safe",
     "compute_pca_safe",
-
     # Laws
     "compute_hurst_exponent_safe",
     "compute_adf_test_safe",
@@ -121,14 +117,12 @@ __all__ = [
     "compute_garman_klass_safe",
     "compute_donchian_channels_safe",
     "compute_atr_safe",
-
     # Paradigms
     "compute_pairs_zscore",
     "compute_basket_zscore",
     "compute_tsm_indicators",
     "apply_mean_reversion_tactics_strict",
     "apply_momentum_tactics_strict",
-
     # Protocols & Monads
     "DataFrame",
     "Result",

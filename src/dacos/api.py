@@ -36,8 +36,9 @@ logger = logging.getLogger(__name__)
 # PILAR 2: THE VECTORIZED RAILWAY (RESEARCH MODE)
 # ============================================================================
 
+
 def run_stat_arb_research(
-    aligned_data: DataFrame, # Data yang sudah melalui ingest_silver_data & sejajar
+    aligned_data: DataFrame,  # Data yang sudah melalui ingest_silver_data & sejajar
     target_symbol: str,
     anchor_symbol: str,
     hedge_ratio_beta: float,
@@ -67,7 +68,7 @@ def run_stat_arb_research(
             target_column=target_symbol,
             anchor_column=anchor_symbol,
             hedge_ratio_beta=hedge_ratio_beta,
-            z_score_rolling_window=config.z_window
+            z_score_rolling_window=config.z_window,
         )
         if engine_res.is_err():
             logger.error(f"Engine Failure: {engine_res.unwrap_err()}")
@@ -75,11 +76,7 @@ def run_stat_arb_research(
 
         # 2. Stasiun Taktik & Bea Cukai (Tactics & Schema Enforcement)
         logger.info("--> Entering Tactics Station: Translating continuous metrics to discrete signals...")
-        tactics_res = apply_mean_reversion_tactics_strict(
-            data=engine_res.unwrap(),
-            symbol=target_symbol,
-            config=config
-        )
+        tactics_res = apply_mean_reversion_tactics_strict(data=engine_res.unwrap(), symbol=target_symbol, config=config)
         if tactics_res.is_err():
             logger.error(f"Tactics Failure: {tactics_res.unwrap_err()}")
             return tactics_res
@@ -93,7 +90,7 @@ def run_stat_arb_research(
 
 
 def run_tsm_research(
-    silver_data: DataFrame, # Data yang sudah melalui ingest_silver_data
+    silver_data: DataFrame,  # Data yang sudah melalui ingest_silver_data
     target_symbol: str,
     config: TSMConfig | None = None,
 ) -> Result[DataFrame, ValueError]:
@@ -116,9 +113,7 @@ def run_tsm_research(
         # 1. Stasiun Mesin (Engines)
         logger.info("--> Entering Engine Station: Computing Donchian Channels & ATR...")
         engine_res = compute_tsm_indicators(
-            data=silver_data,
-            atr_window=config.atr_window,
-            donchian_window=config.donchian_window
+            data=silver_data, atr_window=config.atr_window, donchian_window=config.donchian_window
         )
         if engine_res.is_err():
             logger.error(f"Engine Failure: {engine_res.unwrap_err()}")
@@ -127,9 +122,7 @@ def run_tsm_research(
         # 2. Stasiun Taktik & Bea Cukai (Tactics & Schema Enforcement)
         logger.info("--> Entering Tactics Station: Applying Breakout & Risk Parity sizing...")
         tactics_res = apply_momentum_tactics_strict(
-            data=engine_res.unwrap(),
-            target_symbol=target_symbol,
-            config=config
+            data=engine_res.unwrap(), target_symbol=target_symbol, config=config
         )
         if tactics_res.is_err():
             logger.error(f"Tactics Failure: {tactics_res.unwrap_err()}")
@@ -146,6 +139,7 @@ def run_tsm_research(
 # ============================================================================
 # PILAR 2: THE LIVE TICK PIPELINE (EXECUTION MODE)
 # ============================================================================
+
 
 def evaluate_stat_arb_live(
     live_buffer: DataFrame | dict[str, Any],
@@ -169,7 +163,6 @@ def evaluate_stat_arb_live(
         Ok(Dict) containing exactly one actionable signal matching STAT_ARB_SIGNAL_SCHEMA.
     """
 
-
     config = config or StatArbConfig()
 
     try:
@@ -181,18 +174,14 @@ def evaluate_stat_arb_live(
             target_column=target_symbol,
             anchor_column=anchor_symbol,
             hedge_ratio_beta=hedge_ratio_beta,
-            z_score_rolling_window=config.z_window
+            z_score_rolling_window=config.z_window,
         )
         if engine_step.is_err():
             return engine_step
 
         # Ambil baris terujung (Latest Tick) dan suapkan ke Tactics Mode 2 (Dict)
         latest_tick = engine_step.unwrap().row(-1, named=True)
-        return apply_mean_reversion_tactics_strict(
-            data=latest_tick,
-            symbol=target_symbol,
-            config=config
-        )
+        return apply_mean_reversion_tactics_strict(data=latest_tick, symbol=target_symbol, config=config)
 
     except Exception as e:
         logger.error(f"[STAT-ARB | LIVE | {target_symbol}] Panic: {e}")
@@ -209,9 +198,7 @@ def evaluate_tsm_live(
 
     try:
         engine_step = compute_tsm_indicators(
-            data=live_buffer,
-            atr_window=config.atr_window,
-            donchian_window=config.donchian_window
+            data=live_buffer, atr_window=config.atr_window, donchian_window=config.donchian_window
         )
         if engine_step.is_err():
             return engine_step
@@ -220,21 +207,26 @@ def evaluate_tsm_live(
 
         # SURGERY: Rekonstruksi Dict jika data dari Numba (yang tidak membawa timestamp)
         if isinstance(live_buffer, dict):
-            # Ambil elemen terakhir dari array timestamp/close
-            ts = live_buffer["timestamp"][-1] if isinstance(live_buffer["timestamp"], (list, np.ndarray)) else live_buffer["timestamp"]
-            cl = live_buffer["close"][-1] if isinstance(live_buffer["close"], (list, np.ndarray)) else live_buffer["close"]
+            # Ambil elemen terakhir dari array timestamp/closets
+            ts = (
+                live_buffer["timestamp"][-1]
+                if isinstance(live_buffer["timestamp"], list | np.ndarray)
+                else live_buffer["timestamp"]
+            )
+            cl = (
+                live_buffer["close"][-1]
+                if isinstance(live_buffer["close"], list | np.ndarray)
+                else live_buffer["close"]
+            )
 
             engine_data["timestamp"] = ts
             engine_data["close"] = cl
             latest_tick = engine_data
+
         else:
             latest_tick = engine_data.row(-1, named=True)
 
-        return apply_momentum_tactics_strict(
-            data=latest_tick,
-            target_symbol=target_symbol,
-            config=config
-        )
+        return apply_momentum_tactics_strict(data=latest_tick, target_symbol=target_symbol, config=config)
 
     except Exception as e:
         logger.error(f"[TSM | LIVE | {target_symbol}] Panic: {e}")
